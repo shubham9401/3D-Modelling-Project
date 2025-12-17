@@ -1,4 +1,3 @@
-
 import win32com.client
 import pythoncom
 import os
@@ -51,34 +50,38 @@ class Part:
         self.model.InsertSketch2(True)
         print(f"Started sketch on: {plane_map[name]}")
 
-    # -------- Cube creation --------
-    def cube(self, edge_mm):
-        edge = edge_mm / 1000.0  # mm → meters
-        half = edge / 2
+    # -------- Cuboid creation --------
+    def cuboid(self, length_mm,breadth_mm,height_mm):
+        length = length_mm / 1000.0  # mm → meters
+        breadth = breadth_mm / 1000.0
+        height = height_mm/1000.0
+        half_l = length / 2
+        half_b = breadth / 2
+        
 
         sk = self.model.SketchManager
         fm = self.model.FeatureManager
 
         # Center rectangle
-        sk.CreateCenterRectangle(0, 0, 0, half, half, 0)
-        print(f"Created center rectangle with half-edge: {half} m")
+        sk.CreateCenterRectangle(0, 0, 0, half_l, half_b, 0)
+        print(f"Created center rectangle with half-length , half-breadth respectively : {half_l} m , {half_b} m ")
 
         # Extrude
         fm.FeatureExtrusion2(
             True, False, False,
             0, 0,
-            edge, 0,
+            height, 0,
             False, False, False, False,
             0, 0,
             False, False, False, False,
             True, True, True,
             0, 0, False
         )
-        print(f"Extruded cube to depth: {edge} m (={edge_mm} mm)")
+        print(f"Extruded cube to depth: {height} m (={height_mm} mm)")
 
 # Create and use Part
 if __name__ == "__main__":
     part = Part()
     part.Plane("Top")   # Select Top plane
-    part.cube(5)        
-    print("Finished creating 3mm cube.")
+    part.cuboid(3,4,5)        
+    print("Finished creating cuboid(l=3,b=4,h=5)mm.")

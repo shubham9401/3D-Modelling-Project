@@ -1,4 +1,3 @@
-
 import win32com.client
 import pythoncom
 import os
@@ -51,34 +50,35 @@ class Part:
         self.model.InsertSketch2(True)
         print(f"Started sketch on: {plane_map[name]}")
 
-    # -------- Cube creation --------
-    def cube(self, edge_mm):
-        edge = edge_mm / 1000.0  # mm → meters
-        half = edge / 2
+    # -------- Cylinder creation --------
+    def cylinder(self, diameter_mm,height_mm):
+        diameter = diameter_mm / 1000.0  # mm → meters
+        radius =  diameter/ 2
+        height = height_mm/1000.0
 
         sk = self.model.SketchManager
         fm = self.model.FeatureManager
 
-        # Center rectangle
-        sk.CreateCenterRectangle(0, 0, 0, half, half, 0)
-        print(f"Created center rectangle with half-edge: {half} m")
+        # Center circle
+        sk.CreateCircle(0, 0, 0,radius , 0, 0)
+        print(f"Created center rectangle with diameter: {diameter} m")
 
         # Extrude
         fm.FeatureExtrusion2(
             True, False, False,
             0, 0,
-            edge, 0,
+            height, 0,
             False, False, False, False,
             0, 0,
             False, False, False, False,
             True, True, True,
             0, 0, False
         )
-        print(f"Extruded cube to depth: {edge} m (={edge_mm} mm)")
+        print(f"Extruded cube to depth: {height} m (={height_mm} mm)")
 
 # Create and use Part
 if __name__ == "__main__":
     part = Part()
     part.Plane("Top")   # Select Top plane
-    part.cube(5)        
-    print("Finished creating 3mm cube.")
+    part.cylinder(4,6)        
+    print("Finished creating  cylinder(d=4,h=6)mm.")
