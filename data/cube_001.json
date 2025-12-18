@@ -1,0 +1,7 @@
+[
+    {
+        "shape": "cube",
+        "plane": "Front",
+        "edge_mm": 50
+    }
+]
