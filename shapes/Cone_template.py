@@ -5,27 +5,9 @@ import math
 
 pythoncom.CoInitialize()
 
-class Part:
-    def __init__(self):
-        self.app = win32com.client.Dispatch("SldWorks.Application")
-        self.app.Visible = True
-        print("Connected to SolidWorks and set visible.")
-
-        self.template = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2021\templates\Part.prtdot"
-        if os.path.exists(self.template):
-            self.app.NewDocument(self.template, 0, 0, 0)
-            print("Opened new Part using template:", self.template)
-        else:
-            try:
-                self.app.NewPart()
-                print("Opened new Part using default template.")
-            except Exception as e:
-                raise Exception("Unable to create new Part. Check SolidWorks templates.") from e
-        self.model = self.app.ActiveDoc
-        if self.model is None:
-            raise Exception("ActiveDoc is None after creating Part.")
-        print("Active document ready.")
-
+class Cone:
+    def __init__(self,model):
+        self.model = model
         self.nothing = win32com.client.VARIANT(pythoncom.VT_DISPATCH, None)
 
     # -------- Plane selection --------
@@ -51,7 +33,7 @@ class Part:
         print(f"Started sketch on: {plane_map[name]}")
 
     # -------- Cone creation --------
-    def cone(self, base_diameter_mm, height_mm):
+    def create(self, base_diameter_mm, height_mm):
         base_radius = (base_diameter_mm / 2) / 1000.0  # mm → meters
         height = height_mm / 1000.0
 
@@ -90,8 +72,11 @@ class Part:
         print(f"Revolved profile to create cone: base diameter={base_diameter_mm} mm, height={height_mm} mm")
 
 # Create and use Part
-if __name__ == "__main__":
-    part = Part()
-    part.Plane("Front")  # Select Front plane for revolution
-    part.cone(40, 60)    # base diameter=40mm, height=60mm
-    print("Finished creating cone (base diameter=40mm, height=60mm).")
+class ConeBuilder:
+    def build(self, model, data):
+        # 1. Initialize logic
+        cone = Cone(model)
+        # 2. Plane selection
+        cone.Plane(data["plane"])
+        # 3. Create cone
+        cone.create(data["base_diameter_mm"], data["height_mm"])

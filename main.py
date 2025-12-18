@@ -38,7 +38,7 @@ def main():
             return
 
     # 3. Load Data
-    json_path = os.path.join("swtest","3D-Modelling-Project", "data", "sphere_001.json")
+    json_path = os.path.join(os.path.dirname(sys.argv[0]), "data", "cube_001.json")
     
     if not os.path.exists(json_path):
         print(f"Error: JSON file not found at {json_path}")

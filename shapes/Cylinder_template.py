@@ -4,28 +4,9 @@ import os
 
 pythoncom.CoInitialize()
 
-class Part:
-    def __init__(self):
-        self.app = win32com.client.Dispatch("SldWorks.Application")
-        self.app.Visible = True
-        print("Connected to SolidWorks and set visible.")
-
-        self.template = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2021\templates\Part.prtdot"
-        if os.path.exists(self.template):
-            self.app.NewDocument(self.template, 0, 0, 0)
-            print("Opened new Part using template:", self.template)
-        else:
-            # Fallback to default part template if specific path is missing
-            try:
-                self.app.NewPart()
-                print("Opened new Part using default template.")
-            except Exception as e:
-                raise Exception("Unable to create new Part. Check SolidWorks templates.") from e
-        self.model = self.app.ActiveDoc
-        if self.model is None:
-            raise Exception("ActiveDoc is None after creating Part.")
-        print("Active document ready.")
-
+class Cylinder:
+    def __init__(self,model):
+        self.model = model
         self.nothing = win32com.client.VARIANT(pythoncom.VT_DISPATCH, None)
 
     # -------- Plane selection --------
@@ -51,7 +32,7 @@ class Part:
         print(f"Started sketch on: {plane_map[name]}")
 
     # -------- Cylinder creation --------
-    def cylinder(self, diameter_mm,height_mm):
+    def create(self, diameter_mm,height_mm):
         diameter = diameter_mm / 1000.0  # mm → meters
         radius =  diameter/ 2
         height = height_mm/1000.0
@@ -61,7 +42,7 @@ class Part:
 
         # Center circle
         sk.CreateCircle(0, 0, 0,radius , 0, 0)
-        print(f"Created center rectangle with diameter: {diameter} m")
+        
 
         # Extrude
         fm.FeatureExtrusion2(
@@ -74,11 +55,14 @@ class Part:
             True, True, True,
             0, 0, False
         )
-        print(f"Extruded cube to depth: {height} m (={height_mm} mm)")
+        
 
 # Create and use Part
-if __name__ == "__main__":
-    part = Part()
-    part.Plane("Top")   # Select Top plane
-    part.cylinder(4,6)        
-    print("Finished creating  cylinder(d=4,h=6)mm.")
+class CylinderBuilder:
+    def build(self, model, data):
+        # 1. Initialize logic
+        cylinder = Cylinder(model)
+        # 2. Plane selection
+        cylinder.Plane(data["plane"])
+        # 3. Create cylinder
+        cylinder.create(data["diameter_mm"],data["height_mm"])

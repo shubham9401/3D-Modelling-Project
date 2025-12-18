@@ -1,0 +1,6 @@
+{
+        "shape": "cone",
+        "plane": "Front",
+        "base_diameter_mm": 40,
+        "height_mm": 60
+}
