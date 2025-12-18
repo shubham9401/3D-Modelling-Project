@@ -21,7 +21,7 @@ def main():
         print("No active Part found. Creating new...")
 
         # Primary Method: Use your specific template path
-        template_path = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2025\templates\Part.prtdot"
+        template_path = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2021\templates\Part.prtdot"
 
         # Fallback Method: Auto-detect from settings if primary path is missing
         if not os.path.exists(template_path):
