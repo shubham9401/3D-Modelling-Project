@@ -5,27 +5,9 @@ import math
 
 pythoncom.CoInitialize()
 
-class Part:
-    def __init__(self):
-        self.app = win32com.client.Dispatch("SldWorks.Application")
-        self.app.Visible = True
-        print("Connected to SolidWorks and set visible.")
-
-        self.template = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2021\templates\Part.prtdot"
-        if os.path.exists(self.template):
-            self.app.NewDocument(self.template, 0, 0, 0)
-            print("Opened new Part using template:", self.template)
-        else:
-            try:
-                self.app.NewPart()
-                print("Opened new Part using default template.")
-            except Exception as e:
-                raise Exception("Unable to create new Part. Check SolidWorks templates.") from e
-        self.model = self.app.ActiveDoc
-        if self.model is None:
-            raise Exception("ActiveDoc is None after creating Part.")
-        print("Active document ready.")
-
+class Sphere:
+    def __init__(self,model):
+        self.model = model
         self.nothing = win32com.client.VARIANT(pythoncom.VT_DISPATCH, None)
 
     # -------- Plane selection --------
@@ -51,7 +33,7 @@ class Part:
         print(f"Started sketch on: {plane_map[name]}")
 
     # -------- Sphere creation --------
-    def sphere(self, diameter_mm):
+    def create(self, diameter_mm):
         radius = (diameter_mm / 2) / 1000.0  # mm → meters
 
         sk = self.model.SketchManager
@@ -85,10 +67,12 @@ class Part:
         )
 
         print(f"Revolved profile to create sphere with diameter: {diameter_mm} mm")
-
-# Create and use Part
-if __name__ == "__main__":
-    part = Part()
-    part.Plane("Front")  # Select Front plane for revolution
-    part.sphere(50)      # 50 mm diameter sphere
-    print("Finished creating sphere (diameter=50mm).")
+class SphereBuilder:
+    def build(self, model, data):
+        # 1. Initialize logic
+        sphere = Sphere(model)
+        # 2. Plane selection
+        sphere.Plane(data["plane"])
+        # 3. Create sphere
+        sphere.create(data["diameter_mm"])
+ 

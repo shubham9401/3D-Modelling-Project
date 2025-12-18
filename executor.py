@@ -1,9 +1,12 @@
 from shapes.Cube_template import CubeBuilder
+from shapes.Cuboid_template import CuboidBuilder
+from shapes.Sphere_template import SphereBuilder
 
 # 1. The Registry
 BUILDERS = {
-    "cube": CubeBuilder()
-    # "sphere": SphereBuilder(),
+    "cube": CubeBuilder(),
+    "cuboid": CuboidBuilder(),
+    "sphere": SphereBuilder(),
 }
 
 # 2. The Execution Logic

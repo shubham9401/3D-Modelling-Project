@@ -7,7 +7,7 @@ from executor import execute
 def main():
     # 1. Connect to SolidWorks
     try:
-        app = win32com.client.GetActiveObject("SldWorks.Application")
+        app = win32com.client.Dispatch("SldWorks.Application")
         app.Visible = True
     except:
         print("Error: SolidWorks is not open. Please launch it first.")
@@ -21,7 +21,7 @@ def main():
         print("No active Part found. Creating new...")
 
         # Primary Method: Use your specific template path
-        template_path = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2021\templates\Part.prtdot"
+        template_path = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2025\templates\Part.prtdot"
 
         # Fallback Method: Auto-detect from settings if primary path is missing
         if not os.path.exists(template_path):
@@ -38,7 +38,7 @@ def main():
             return
 
     # 3. Load Data
-    json_path = os.path.join("data", "cube_001.json")
+    json_path = os.path.join("swtest","3D-Modelling-Project", "data", "sphere_001.json")
     
     if not os.path.exists(json_path):
         print(f"Error: JSON file not found at {json_path}")

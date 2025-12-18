@@ -1,0 +1,7 @@
+{
+  "shape": "cuboid",
+  "plane": "Top",
+  "length_mm": 3,
+  "breadth_mm": 4,
+  "height_mm": 5
+}

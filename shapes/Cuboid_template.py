@@ -1,31 +1,13 @@
+from pyexpat import model
 import win32com.client
 import pythoncom
 import os
 
 pythoncom.CoInitialize()
 
-class Part:
-    def __init__(self):
-        self.app = win32com.client.Dispatch("SldWorks.Application")
-        self.app.Visible = True
-        print("Connected to SolidWorks and set visible.")
-
-        self.template = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2021\templates\Part.prtdot"
-        if os.path.exists(self.template):
-            self.app.NewDocument(self.template, 0, 0, 0)
-            print("Opened new Part using template:", self.template)
-        else:
-            # Fallback to default part template if specific path is missing
-            try:
-                self.app.NewPart()
-                print("Opened new Part using default template.")
-            except Exception as e:
-                raise Exception("Unable to create new Part. Check SolidWorks templates.") from e
-        self.model = self.app.ActiveDoc
-        if self.model is None:
-            raise Exception("ActiveDoc is None after creating Part.")
-        print("Active document ready.")
-
+class Cuboid:
+    def __init__(self,model):
+        self.model = model
         self.nothing = win32com.client.VARIANT(pythoncom.VT_DISPATCH, None)
 
     # -------- Plane selection --------
@@ -51,7 +33,7 @@ class Part:
         print(f"Started sketch on: {plane_map[name]}")
 
     # -------- Cuboid creation --------
-    def cuboid(self, length_mm,breadth_mm,height_mm):
+    def create(self, length_mm,breadth_mm,height_mm):
         length = length_mm / 1000.0  # mm → meters
         breadth = breadth_mm / 1000.0
         height = height_mm/1000.0
@@ -79,9 +61,13 @@ class Part:
         )
         print(f"Extruded cube to depth: {height} m (={height_mm} mm)")
 
-# Create and use Part
-if __name__ == "__main__":
-    part = Part()
-    part.Plane("Top")   # Select Top plane
-    part.cuboid(3,4,5)        
-    print("Finished creating cuboid(l=3,b=4,h=5)mm.")
+class CuboidBuilder:
+    def build(self, model, data):
+        # 1. Initialize logic
+        cuboid = Cuboid(model)
+        cuboid.Plane(data["plane"])
+        cuboid.create(
+            data["length_mm"],
+            data["breadth_mm"],
+            data["height_mm"]
+        )
