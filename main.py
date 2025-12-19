@@ -38,24 +38,29 @@ def main():
             return
 
     # 3. Load Data
-    json_path = os.path.join(os.path.dirname(sys.argv[0]), "data", "cube_001.json")
+    data_folder = os.path.join("data")
     
-    if not os.path.exists(json_path):
-        print(f"Error: JSON file not found at {json_path}")
-        return
+    # This list comprehension creates a list of every .json file in that folder
+    all_files = [f for f in os.listdir(data_folder) if f.endswith('.json')]
+    for filename in all_files:
+        json_path = os.path.join(data_folder, filename)
+        
+        try:
+            with open(json_path, "r") as f:
+                design_data = json.load(f)
 
-    with open(json_path, "r") as f:
-        design_data = json.load(f)
-    print(f"Loaded instructions from {json_path}")
+            # ... Calls the executor ...
+            execute(model, design_data)
+            print("{filename} processed successfully")
+            #To make sure different json files are made in different part 
+            app.NewDocument(template_path, 0, 0, 0)
+            model = app.ActiveDoc
+            
+                
+        except Exception as e:
+            print(f"Failed to process {filename}: {e}")
 
-    # 4. Execute Logic
-    if isinstance(design_data, list):
-        for part in design_data:
-            execute(model, part)
-    else:
-        execute(model, design_data)
-
-    print("Execution finished.")
+    print("All files processed successfully.")        
 
 if __name__ == "__main__":
     main()
