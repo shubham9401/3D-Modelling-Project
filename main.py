@@ -13,9 +13,11 @@ def save_stl(model, out_path):
     Save the active model as STL.
     For finer control, retrieve ExportData (GetExportFileData(1)) and set Binary/Deviation/Angle.
     """
-    ok = model.Extension.SaveAs(out_path, 0, None, None, None, None)
+    # SaveAs parameters: 0 = default save options
+    SAVE_OPTIONS = 0
+    ok = model.Extension.SaveAs(out_path, SAVE_OPTIONS, None, None, None, None)
     if not ok:
-        if not model.SaveAs3(out_path, 0, 0):
+        if not model.SaveAs3(out_path, SAVE_OPTIONS, SAVE_OPTIONS):
             raise RuntimeError(f"Failed to save STL: {out_path}")
 
 def new_part(app):

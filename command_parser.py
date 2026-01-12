@@ -42,7 +42,7 @@ def extract_mm_numbers(text: str) -> list[float]:
     for m in re.finditer(r"(\d+(?:\.\d+)?)\s*(mm)?", text.lower()):
         try:
             nums.append(float(m.group(1)))
-        except:
+        except (ValueError, AttributeError):
             pass
     return nums
 

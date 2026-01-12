@@ -38,6 +38,7 @@ class Cup:
 
         if lip_fillet_mm and lip_fillet_mm > 0:
             rf = min(lip_fillet_mm / 1000.0, t * 0.9)
+            # CreateArc: center_x, center_y, center_z, start_x, start_y, start_z, end_x, end_y, end_z, direction (1=clockwise)
             sk.CreateArc(R_outer - rf, H - rf, 0, R_outer, H, 0, r_inner, H - 2 * rf, 0, 1)
             inner_top_y = H - 2 * rf
         else:
@@ -53,7 +54,8 @@ class Cup:
         self.model.ClearSelection2(True)
         try:
             axis_seg.Select4(False, None)
-        except Exception:
+        except (AttributeError, TypeError):
+            # Fallback if Select4 fails - select by name
             self.model.Extension.SelectByID2("Line1", "SKETCHSEGMENT", 0, 0, 0, False, 0, self.nothing, 0)
 
         fm.FeatureRevolve2(
