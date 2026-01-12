@@ -13,7 +13,7 @@ def save_stl(model, out_path):
     Save the active model as STL.
     For finer control, retrieve ExportData (GetExportFileData(1)) and set Binary/Deviation/Angle.
     """
-    # SaveAs parameters: 0 = default save options
+    # SAVE_OPTIONS = 0 means use default save options (no special flags)
     SAVE_OPTIONS = 0
     ok = model.Extension.SaveAs(out_path, SAVE_OPTIONS, None, None, None, None)
     if not ok:

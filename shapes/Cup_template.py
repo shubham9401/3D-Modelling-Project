@@ -32,11 +32,14 @@ class Cup:
         sk = self.model.SketchManager
         fm = self.model.FeatureManager
 
+        # Create centerline for revolution axis (extends beyond cup geometry for proper revolve)
+        # -H*0.5 to H*1.5 ensures axis spans entire profile
         axis_seg = sk.CreateCenterLine(0, -H * 0.5, 0, 0, H * 1.5, 0)
 
         sk.CreateLine(R_outer, 0, 0, R_outer, H, 0)
 
         if lip_fillet_mm and lip_fillet_mm > 0:
+            # Limit fillet radius to 90% of wall thickness to prevent geometry issues
             rf = min(lip_fillet_mm / 1000.0, t * 0.9)
             # CreateArc: center_x, center_y, center_z, start_x, start_y, start_z, end_x, end_y, end_z, direction (1=clockwise)
             sk.CreateArc(R_outer - rf, H - rf, 0, R_outer, H, 0, r_inner, H - 2 * rf, 0, 1)
