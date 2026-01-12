@@ -46,8 +46,8 @@ def main():
     try:
         app = win32com.client.Dispatch("SldWorks.Application")
         app.Visible = True
-    except:
-        print("Error: SolidWorks is not open. Please launch it first.")
+    except Exception as e:
+        print(f"Error: SolidWorks is not open. Please launch it first. ({e})")
         return
 
     # 2. Get or Create Active Document (Type 1 is Part)

@@ -1,4 +1,5 @@
 import re
+from typing import Optional, List, Dict
 
 SHAPE_ALIASES = {
     "cube": ["cube", "box", "square prism"],
@@ -22,7 +23,7 @@ DEFAULTS = {
 
 PLANES = {"top": "Top", "front": "Front", "right": "Right"}
 
-def detect_shape(text: str) -> str | None:
+def detect_shape(text: str) -> Optional[str]:
     t = text.lower()
     for shape, aliases in SHAPE_ALIASES.items():
         for a in aliases:
@@ -30,14 +31,14 @@ def detect_shape(text: str) -> str | None:
                 return shape
     return None
 
-def parse_plane(text: str) -> str | None:
+def parse_plane(text: str) -> Optional[str]:
     t = text.lower()
     for k, v in PLANES.items():
         if k in t:
             return v
     return None
 
-def extract_mm_numbers(text: str) -> list[float]:
+def extract_mm_numbers(text: str) -> List[float]:
     nums = []
     for m in re.finditer(r"(\d+(?:\.\d+)?)\s*(mm)?", text.lower()):
         try:
@@ -46,7 +47,7 @@ def extract_mm_numbers(text: str) -> list[float]:
             pass
     return nums
 
-def parse_prompt(prompt: str) -> dict:
+def parse_prompt(prompt: str) -> Dict:
     shape = detect_shape(prompt)
     if not shape:
         raise ValueError("Could not detect shape in prompt. Try e.g., 'make a cube 40mm on top plane'.")
@@ -147,7 +148,7 @@ def parse_prompt(prompt: str) -> dict:
 
     return data
 
-def parse_kv_params(kv: str) -> dict:
+def parse_kv_params(kv: str) -> Dict:
     out = {}
     for item in kv.split(","):
         item = item.strip()
