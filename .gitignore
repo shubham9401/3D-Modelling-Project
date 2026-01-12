@@ -16,3 +16,6 @@ Thumbs.db
 
 # VS Code
 .vscode/
+
+# Output directory
+out/

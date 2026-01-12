@@ -4,6 +4,7 @@ from shapes.Sphere_template import SphereBuilder
 from shapes.Cone_template import ConeBuilder
 from shapes.Cylinder_template import CylinderBuilder
 from shapes.Wedge_template import WedgeBuilder
+from shapes.Cup_template import CupBuilder
 
 # 1. The Registry
 BUILDERS = {
@@ -13,6 +14,7 @@ BUILDERS = {
     "cone": ConeBuilder(),
     "cylinder": CylinderBuilder(),
     "wedge": WedgeBuilder(),
+    "cup": CupBuilder(),
 }
 
 # 2. The Execution Logic

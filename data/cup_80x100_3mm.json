@@ -1,0 +1,8 @@
+{
+  "shape": "cup",
+  "plane": "Front",
+  "outer_d_mm": 80,
+  "wall_mm": 3,
+  "height_mm": 100,
+  "lip_fillet_mm": 1.0
+}

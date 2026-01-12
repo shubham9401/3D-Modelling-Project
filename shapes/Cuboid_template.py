@@ -1,4 +1,3 @@
-from pyexpat import model
 import win32com.client
 import pythoncom
 import os
