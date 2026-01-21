@@ -5,7 +5,7 @@ from system_prompt import SYSTEM_INSTRUCTION, AVAILABLE_TOOLS
 
 # --- CONFIGURATION ---
 
-API_KEY = os.environ.get(API_KEY)   
+API_KEY = os.environ.get("GROQ_API_KEY")   
 OUTPUT_FILE = "mission.json"
 
 def get_agent_response(user_request):
@@ -72,8 +72,9 @@ def save_mission(data):
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
     # Check if key is set
-    if "YOUR_GROQ_API_KEY" in API_KEY:
-        print("❌ ERROR: You need to paste your Groq API Key in line 8.")
+    if not API_KEY:
+        print("❌ ERROR: GROQ_API_KEY environment variable is not set.")
+        print("   Set it with: $env:GROQ_API_KEY = 'your_key_here'")
         exit()
 
     print("--- SOLIDWORKS AI AGENT (Powered by Llama 3) ---")
