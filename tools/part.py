@@ -14,9 +14,9 @@ Does NOT:
 """
 
 try:
-    from .solidworks_app import get_sw_app, get_active_model
+    from .solidworks_app import get_sw_app, get_active_model, create_new_part, get_nothing
 except ImportError:
-    from solidworks_app import get_sw_app, get_active_model
+    from solidworks_app import get_sw_app, get_active_model, create_new_part, get_nothing
 
 # ============================================================
 # INTERNAL STATE
@@ -31,7 +31,7 @@ _PART_ACTIVE = False
 def _sw():
     sw = get_sw_app()
     if sw is None:
-        raise Exception("SolidWorks application not available")
+        raise Exception("SolidWorks application not available. Please open SolidWorks first.")
     return sw
 
 def _model():
@@ -46,7 +46,7 @@ def _require_part_active():
 
 def _is_part(model):
     # swDocPART = 1
-    return model.GetType() == 1
+    return model.GetType == 1
 
 # ============================================================
 # PART LIFECYCLE
@@ -54,12 +54,11 @@ def _is_part(model):
 
 def create_part():
     """
-    Creates a new part document.
+    Creates a new part document using template.
     """
     global _PART_ACTIVE
 
-    sw = _sw()
-    model = sw.NewDocument("", 0, 0, 0)
+    model = create_new_part()
 
     if model is None:
         raise Exception("Failed to create part document")
@@ -124,7 +123,7 @@ def require_ready_for_feature():
         raise Exception("No sketch available for feature creation")
 
     if not sketch.IsClosed():
-        raise Exception("Sketch is not closed – cannot create feature")
+        raise Exception("Sketch is not closed - cannot create feature")
 
     return "Part ready for feature creation"
 
@@ -139,6 +138,13 @@ def save_part(path):
     _require_part_active()
     model = _model()
 
+    # Ensure .sldprt extension
+    if not path.lower().endswith('.sldprt'):
+        path = path + '.sldprt'
+
+    errors = win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
+    warnings = win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
+    
     success = model.SaveAs3(path, 0, 0)
     if not success:
         raise Exception("Failed to save part")
