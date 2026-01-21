@@ -5,7 +5,7 @@ from system_prompt import SYSTEM_INSTRUCTION, AVAILABLE_TOOLS
 
 # --- CONFIGURATION ---
 
-API_KEY = process.env.API_KEY   
+API_KEY = os.environ.get(API_KEY)   
 OUTPUT_FILE = "mission.json"
 
 def get_agent_response(user_request):
