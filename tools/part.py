@@ -13,7 +13,10 @@ Does NOT:
 - Create features
 """
 
-from solidworks_app import get_sw_app, get_active_model
+try:
+    from .solidworks_app import get_sw_app, get_active_model
+except ImportError:
+    from solidworks_app import get_sw_app, get_active_model
 
 # ============================================================
 # INTERNAL STATE

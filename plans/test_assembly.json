@@ -1,0 +1,58 @@
+[
+    {
+        "_comment": "Assembly test - Creates base plate and mounting block",
+        "tool": "create_part",
+        "args": {}
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Top"
+        }
+    },
+    {
+        "tool": "draw_rectangle",
+        "args": {
+            "width": 150,
+            "height": 100
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "extrude",
+        "args": {
+            "depth": 10
+        }
+    },
+    {
+        "_comment": "Add mounting holes",
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Top"
+        }
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 5
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "cut_through_all",
+        "args": {}
+    },
+    {
+        "_comment": "Add fillet to edges",
+        "tool": "fillet",
+        "args": {
+            "radius": 3
+        }
+    }
+]

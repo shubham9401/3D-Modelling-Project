@@ -10,7 +10,10 @@ Capabilities:
 """
 
 import math
-from solidworks_app import get_active_model
+try:
+    from .solidworks_app import get_active_model
+except ImportError:
+    from solidworks_app import get_active_model
 
 # ============================================================
 # INTERNAL STATE & HELPERS
