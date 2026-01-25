@@ -7,8 +7,8 @@ import pythoncom
 import os
 
 # Template path for new parts (adjust if your SW version differs)
-PART_TEMPLATE = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2025\templates\Part.prtdot"
-ASSEMBLY_TEMPLATE = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2025\templates\Assembly.asmdot"
+PART_TEMPLATE = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2021\templates\Part.prtdot"
+ASSEMBLY_TEMPLATE = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2021\templates\Assembly.asmdot"
 
 # Cached app reference
 _SW_APP = None

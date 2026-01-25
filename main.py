@@ -12,6 +12,12 @@ This script provides a complete workflow:
 
 import os
 import sys
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed, will use system env vars
 from llm_client import get_agent_response, save_mission
 from mcp_server.dispatcher import run_mission
 
