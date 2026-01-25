@@ -30,7 +30,12 @@ TOOL_REGISTRY = {
     
     # Sketch lifecycle
     "create_sketch": sketch.create_sketch,
+    "create_sketch_on_top_face": sketch.create_sketch_on_top_face,
+    "create_sketch_on_selected_face": sketch.create_sketch_on_selected_face,
     "exit_sketch": sketch.exit_sketch,
+    
+    # Face selection
+    "select_face_by_normal": sketch.select_face_by_normal,
     
     # Sketch primitives
     "draw_line": sketch.draw_line,

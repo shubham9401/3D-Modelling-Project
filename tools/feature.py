@@ -34,8 +34,12 @@ def _fm():
     return _model().FeatureManager
 
 def _require_part():
-    # swDocPART = 1
-    if _model().GetType != 1:
+    model = _model()
+    # Safe property access for GetType
+    val = model.GetType
+    if callable(val):
+        val = val()
+    if val != 1:
         raise Exception("Active document is not a PART")
 
 # ============================================================
@@ -50,11 +54,22 @@ def extrude(depth):
     _require_part()
     
     depth_m = depth / 1000.0  # mm to meters
+    model = _model()
+    nothing = get_nothing()
     
-    # FeatureExtrusion2 parameters based on working code:
-    # (Sd, Flip, Dir, T1, T2, D1, D2, Dchk1, Dchk2, Ddir1, Ddir2, 
-    #  Dang1, Dang2, OffsetReverse1, OffsetReverse2, TranslateSurface1,
-    #  TranslateSurface2, Merge, UseFeatScope, UseAutoSelect, T0, StartOffset, FlipStartOffset)
+    # Make sure a sketch is selected
+    model.ClearSelection2(True)
+    last_sketch = ""
+    for i in range(1, 40): # Scan up to 40 sketches
+        sketch_name = f"Sketch{i}"
+        if model.Extension.SelectByID2(sketch_name, "SKETCH", 0, 0, 0, False, 0, nothing, 0):
+            last_sketch = sketch_name
+    
+    if last_sketch:
+        model.ClearSelection2(True)
+        model.Extension.SelectByID2(last_sketch, "SKETCH", 0, 0, 0, False, 0, nothing, 0)
+    
+    # FeatureExtrusion2 parameters
     _fm().FeatureExtrusion2(
         True,           # Sd (single direction)
         False,          # Flip
@@ -85,14 +100,23 @@ def extrude(depth):
 
 
 def extrude_midplane(depth):
-    """
-    Mid-plane boss extrude.
-    Total depth in mm (extends depth/2 in both directions).
-    """
+    """Mid-plane boss extrude."""
     _require_part()
+    half_depth = depth / 2000.0
+    model = _model()
+    nothing = get_nothing()
     
-    half_depth = depth / 2000.0  # mm to meters, then half
-    
+    model.ClearSelection2(True)
+    last_sketch = ""
+    for i in range(1, 40):
+        sketch_name = f"Sketch{i}"
+        if model.Extension.SelectByID2(sketch_name, "SKETCH", 0, 0, 0, False, 0, nothing, 0):
+            last_sketch = sketch_name
+            
+    if last_sketch:
+        model.ClearSelection2(True)
+        model.Extension.SelectByID2(last_sketch, "SKETCH", 0, 0, 0, False, 0, nothing, 0)
+
     # T1 = 6 for mid-plane
     _fm().FeatureExtrusion2(
         True, False, False,
@@ -119,177 +143,89 @@ def cut_extrude(depth):
     _require_part()
     
     depth_m = depth / 1000.0
+    model = _model()
+    nothing = get_nothing()
     
-    _fm().FeatureCut3(
-        True, False, False,
-        0, 0,
-        depth_m, 0,
-        False, False, False, False,
-        0, 0,
-        False, False, False, False,
-        False, False, False,
-        False, False, False
+    try: model.SelectionManager.EnableContourSelection = False
+    except: pass
+    
+    model.ClearSelection2(True)
+    last_sketch = ""
+    for i in range(1, 40):
+        sketch_name = f"Sketch{i}"
+        if model.Extension.SelectByID2(sketch_name, "SKETCH", 0, 0, 0, False, 0, nothing, 0):
+            last_sketch = sketch_name
+    
+    if last_sketch:
+        model.ClearSelection2(True)
+        model.Extension.SelectByID2(last_sketch, "SKETCH", 0, 0, 0, False, 0, nothing, 0)
+    
+    # FIX: T1=0 (Blind) so it uses depth_m
+    _fm().FeatureCut4(
+        True, False, False, 
+        0, 0,               # T1 = 0 (Blind Cut)
+        depth_m, 0,         # D1 = Depth
+        False, False, False, False, 0, 0, False, False, False, False, False, 
+        True, True, False, False, False, 0, 0, False, False
     )
-
     return f"Cut extruded {depth}mm"
 
 
 def cut_through_all():
-    """
-    Through-all cut.
-    """
+    """Through-all cut."""
     _require_part()
-    
-    # T1 = 1 for Through All
-    _fm().FeatureCut3(
-        True, False, False,
-        1, 0,
-        0, 0,
-        False, False, False, False,
-        0, 0,
-        False, False, False, False,
-        False, False, False,
-        False, False, False
+    _fm().FeatureCut4(
+        True, False, False, 
+        1, 0,               # T1 = 1 (Through All)
+        0, 0, 
+        False, False, False, False, 0, 0, False, False, False, False, False, 
+        True, True, False, False, False, 0, 0, False, False
     )
-
     return "Cut through all"
 
 # ============================================================
-# REVOLVE FEATURE
+# REVOLVE, FILLET, PATTERNS
 # ============================================================
 
 def revolve(angle=360):
-    """
-    Revolve boss feature.
-    Requires axis/centerline to be in sketch.
-    Angle in degrees.
-    """
     _require_part()
-    
-    _fm().FeatureRevolve2(
-        True, True,
-        False, False, False, False,
-        0, 0,
-        math.radians(angle), 0,
-        False, False,
-        0, 0, 0,
-        False, False, False
-    )
-
+    _fm().FeatureRevolve2(True, True, False, False, False, False, 0, 0, math.radians(angle), 0, False, False, 0, 0, 0, False, False, False)
     return f"Revolved {angle} degrees"
 
-# ============================================================
-# FILLET & CHAMFER
-# ============================================================
 
 def fillet(radius):
-    """
-    Fillet selected edges.
-    Radius in mm.
-    """
     _require_part()
-    
     r = radius / 1000.0
-    
-    _fm().InsertFeatureFillet(
-        195,    # Options
-        r,      # Radius
-        0,      # Radius2
-        0, 0, 0, 0,
-        0, 0, 0, 0
-    )
-
+    _fm().InsertFeatureFillet(195, r, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     return f"Fillet applied: radius {radius}mm"
 
 
 def chamfer(distance, angle=45):
-    """
-    Distance-angle chamfer on selected edges.
-    Distance in mm, angle in degrees.
-    """
     _require_part()
-    
     d = distance / 1000.0
-    
-    _fm().InsertFeatureChamfer(
-        4,      # Type
-        d,      # Distance
-        math.radians(angle),
-        0, 0, 0, 0, 0
-    )
-
+    _fm().InsertFeatureChamfer(4, d, math.radians(angle), 0, 0, 0, 0, 0)
     return f"Chamfer applied: {distance}mm @ {angle} deg"
 
-# ============================================================
-# PATTERN FEATURES
-# ============================================================
 
 def linear_pattern(count, spacing):
-    """
-    Linear pattern of selected feature.
-    Direction reference must be selected.
-    Spacing in mm.
-    """
     _require_part()
-    
     s = spacing / 1000.0
-    
-    _fm().FeatureLinearPattern3(
-        count,      # instances dir 1
-        1,          # instances dir 2 (unused)
-        s,          # spacing dir 1
-        0,
-        False, False,
-        "", "",
-        False, False,
-        True
-    )
-
-    return f"Linear pattern: {count} instances @ {spacing}mm"
+    _fm().FeatureLinearPattern3(count, 1, s, 0, False, False, "", "", False, False, True)
+    return f"Linear pattern: {count} x {spacing}mm"
 
 
 def circular_pattern(count, angle=360):
-    """
-    Circular pattern of selected feature.
-    Axis must be selected.
-    Angle in degrees.
-    """
     _require_part()
-    
-    _fm().FeatureCircularPattern3(
-        count,
-        math.radians(angle),
-        False,
-        "",
-        False,
-        True
-    )
-
-    return f"Circular pattern: {count} instances over {angle} deg"
+    _fm().FeatureCircularPattern3(count, math.radians(angle), False, "", False, True)
+    return f"Circular pattern: {count} over {angle} deg"
 
 
 def mirror_feature():
-    """
-    Mirror selected feature about selected plane.
-    """
     _require_part()
-    
-    _fm().InsertMirrorFeature2(
-        False,   # mirror bodies
-        True,    # mirror features
-        False,   # geometry pattern
-        False
-    )
-
+    _fm().InsertMirrorFeature2(False, True, False, False)
     return "Feature mirrored"
 
-# ============================================================
-# FEATURE INFO
-# ============================================================
 
 def get_feature_count():
-    """
-    Returns total feature count.
-    """
     _require_part()
     return _model().GetFeatureCount(False)

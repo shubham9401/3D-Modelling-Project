@@ -46,7 +46,7 @@ def _require_part_active():
 
 def _is_part(model):
     # swDocPART = 1
-    return model.GetType == 1
+    return model.GetType == 1  # ✅ FIXED: Removed ()
 
 # ============================================================
 # PART LIFECYCLE
