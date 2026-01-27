@@ -6,19 +6,14 @@
     {
         "tool": "create_sketch",
         "args": {
-            "plane": "Front"
+            "plane": "Top"
         }
     },
     {
-        "tool": "draw_circle",
+        "tool": "draw_rectangle",
         "args": {
-            "radius": 10
-        }
-    },
-    {
-        "tool": "draw_circle",
-        "args": {
-            "radius": 5
+            "width": 20,
+            "height": 20
         }
     },
     {
@@ -28,7 +23,33 @@
     {
         "tool": "extrude",
         "args": {
-            "depth": 100
+            "depth": 20
+        }
+    },
+    {
+        "tool": "select_face_by_normal",
+        "args": {
+            "direction": "up"
+        }
+    },
+    {
+        "tool": "create_sketch_on_selected_face",
+        "args": {}
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 10
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "extrude",
+        "args": {
+            "depth": 20
         }
     }
 ]
