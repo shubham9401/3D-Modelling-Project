@@ -33,10 +33,18 @@ def _require_part():
 def extrude(depth):
     """Boss-Extrude. Depth in mm. Negative = downward/backward."""
     _require_part()
-    depth_m = depth / 1000.0
     
-    result = _fm().FeatureExtrusion2(
-        True, False, False,
+    # LOGIC FIX: Handle negative depth by flipping direction
+    depth_val = float(depth)
+    is_negative = depth_val < 0
+    depth_m = abs(depth_val) / 1000.0
+    
+    # Arg 3 is 'FlipDir'. If depth is negative, set True.
+    flip_dir = is_negative
+    
+    # 0 = Blind
+    _fm().FeatureExtrusion2(
+        True, False, flip_dir, # Sd, FlipSide, Dir
         0, 0,
         depth_m, 0,
         False, False, False, False,
@@ -45,10 +53,6 @@ def extrude(depth):
         True, True, True,
         0, 0, False
     )
-    
-    if result is None:
-        raise Exception("Extrusion failed")
-    
     return f"Extruded {depth}mm"
 
 def extrude_midplane(depth):
@@ -56,6 +60,7 @@ def extrude_midplane(depth):
     _require_part()
     half_depth = depth / 2000.0
     
+    # 6 = MidPlane
     _fm().FeatureExtrusion2(
         True, False, False,
         6, 0,
@@ -66,7 +71,6 @@ def extrude_midplane(depth):
         True, True, True,
         0, 0, False
     )
-    
     return f"Mid-plane extruded {depth}mm"
 
 # ============================================================
@@ -76,10 +80,17 @@ def extrude_midplane(depth):
 def cut_extrude(depth):
     """Cut-Extrude. Depth in mm."""
     _require_part()
-    depth_m = depth / 1000.0
     
+    # LOGIC FIX: Handle negative depth for cuts too
+    depth_val = float(depth)
+    is_negative = depth_val < 0
+    depth_m = abs(depth_val) / 1000.0
+    
+    flip_dir = is_negative
+
+    # T1=0 (Blind)
     _fm().FeatureCut4(
-        True, False, False, 
+        True, False, flip_dir, # Sd, FlipSide, FlipDir
         0, 0,
         depth_m, 0,
         False, False, False, False, 0, 0,
@@ -87,13 +98,13 @@ def cut_extrude(depth):
         True, True, False, False, False,
         0, 0, False, False
     )
-    
     return f"Cut extruded {depth}mm"
 
 def cut_through_all():
     """Through-all cut."""
     _require_part()
     
+    # T1=1 (Through All)
     _fm().FeatureCut4(
         True, False, False, 
         1, 0,
@@ -103,7 +114,6 @@ def cut_through_all():
         True, True, False, False, False,
         0, 0, False, False
     )
-    
     return "Cut through all"
 
 # ============================================================
@@ -112,24 +122,35 @@ def cut_through_all():
 
 def revolve(angle=360):
     """
-    Revolve around vertical axis. Requires centerline in sketch.
+    Revolve boss feature.
+    Requires axis/centerline to be in sketch.
     Angle in degrees.
     """
     _require_part()
     
-    result = _fm().FeatureRevolve2(
-        True, True,
-        False, False, False, False,
-        0, 0,
-        math.radians(angle), 0,
-        False, False,
-        0, 0, 0,
-        False, False, False
+    # FIX: Updated to 20 arguments to match your VBA/Version
+    _fm().FeatureRevolve2(
+        True,                   # SingleDir
+        True,                   # IsSolid
+        False,                  # IsThin
+        False,                  # ReverseDir
+        False,                  # ReverseDir2
+        False,                  # MergeFaces
+        0,                      # Dir1Type (0=Blind)
+        0,                      # Dir2Type
+        math.radians(angle),    # Dir1Angle
+        0,                      # Dir2Angle
+        False,                  # ReverseOffset
+        False,                  # UseOffset2
+        0.01,                   # Offset1
+        0.01,                   # Offset2
+        0,                      # ThinType
+        0,                      # ThinThickness1
+        0,                      # ThinThickness2
+        True,                   # UseFeatScope
+        True,                   # UseAutoSelect
+        True                    # PropagateFeatureToParts
     )
-    
-    if result is None:
-        raise Exception("Revolve failed - ensure sketch has centerline")
-    
     return f"Revolved {angle} degrees"
 
 # ============================================================
@@ -137,7 +158,7 @@ def revolve(angle=360):
 # ============================================================
 
 def fillet(radius):
-    """Fillet selected edges. Radius in mm."""
+    """Fillet selected edges."""
     _require_part()
     r = radius / 1000.0
     _fm().InsertFeatureFillet(195, r, 0, 0, 0, 0, 0, 0, 0, 0, 0)

@@ -24,12 +24,12 @@ TOOL_REGISTRY = {
     
     # Sketch lifecycle
     "create_sketch": sketch.create_sketch,
-    "create_sketch_on_top_face": sketch.create_sketch_on_top_face,
     "create_sketch_on_selected_face": sketch.create_sketch_on_selected_face,
     "exit_sketch": sketch.exit_sketch,
     
     # Face selection
     "select_face_by_normal": sketch.select_face_by_normal,
+    "select_face_at_coordinate": sketch.select_face_at_coordinate,
     
     # Sketch primitives
     "draw_line": sketch.draw_line,
@@ -66,7 +66,13 @@ TOOL_REGISTRY = {
 
 def load_mission(filepath: str) -> list:
     with open(filepath, "r") as f:
-        return json.load(f)
+        content = f.read()
+        # Basic cleanup if Markdown is present
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].strip()
+        return json.loads(content)
 
 def execute_action(action: dict) -> str:
     tool_name = action.get("tool")
@@ -97,24 +103,28 @@ def run_mission(filepath: str):
         print(f"[{i}/{len(actions)}] Executing: {tool_name}")
         print(f"         Args: {args}")
         
+        # ADD THIS DEBUG CODE:
+        if tool_name == "create_sketch_on_selected_face":
+            from tools.solidworks_app import get_active_model
+            model = get_active_model()
+            sel_count = model.SelectionManager.GetSelectedObjectCount
+            if callable(sel_count):
+                sel_count = sel_count()
+            print(f"         🔍 DEBUG: Selection count before execution = {sel_count}")
+        
         try:
             result = execute_action(action)
             print(f"         ✅ {result}\n")
         except Exception as e:
             print(f"         ❌ FAILED: {e}\n")
+            
+            # ADD THIS TO SEE FULL ERROR:
+            import traceback
+            print("Full traceback:")
+            traceback.print_exc()
+            
             print("⛔ Mission aborted due to error.")
             return False
     
     print("🎉 Mission completed successfully!")
     return True
-
-if __name__ == "__main__":
-    mission_file = os.path.join(project_root, "mission.json")
-    if len(sys.argv) > 1:
-        mission_file = sys.argv[1]
-    
-    print("=" * 50)
-    print("🚀 SOLIDWORKS AI DISPATCHER")
-    print("=" * 50)
-    
-    run_mission(mission_file)

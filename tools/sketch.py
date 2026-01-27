@@ -35,18 +35,21 @@ def _require_sketch_active():
         raise Exception("No active sketch. Call create_sketch() first.")
 
 def _active_sketch():
-    val = _model().GetActiveSketch2
-    if callable(val):
-        return val()
-    return val
-
-# ============================================================
-# SKETCH LIFECYCLE
-# ============================================================
-
+    try:
+        # Try getting active sketch
+        model = _model()
+        sketch = model.GetActiveSketch2()
+        return sketch
+    except:
+        # If GetActiveSketch2 fails, return None
+        return None
+    
 def create_sketch(plane: str):
     """Starts a new sketch on the specified plane."""
     global _SKETCH_ACTIVE
+
+    if _active_sketch() is None:
+        _SKETCH_ACTIVE = False
 
     if _SKETCH_ACTIVE:
         raise Exception("Sketch already active. Exit current sketch first.")
@@ -69,23 +72,41 @@ def create_sketch(plane: str):
     _SKETCH_ACTIVE = True
     return f"Sketch created on {plane} Plane"
 
+def select_face_at_coordinate(x, y, z):
+    """Selects a face at a specific 3D coordinate (mm)."""
+    model = _model()
+    nothing = get_nothing()
+    model.ClearSelection2(True)
+    
+    x_m, y_m, z_m = x/1000.0, y/1000.0, z/1000.0
+    
+    status = model.Extension.SelectByID2("", "FACE", x_m, y_m, z_m, False, 0, nothing, 0)
+    
+    if not status:
+        for offset in [0.0001, -0.0001, 0.0002, -0.0002]:
+            status = model.Extension.SelectByID2("", "FACE", x_m, y_m + offset, z_m, False, 0, nothing, 0)
+            if status:
+                break
+    
+    if not status:
+        raise Exception(f"No face found at coordinates ({x}, {y}, {z})")
+    
+    return f"Selected face at ({x}, {y}, {z})"
+
 def select_face_by_normal(direction="up"):
-    """
-    Intelligently selects a face based on its orientation.
-    """
+    """Intelligently selects a face based on its orientation."""
     model = _model()
     nothing = get_nothing()
     
     model.ClearSelection2(True)
     
-    # Vector Map: Y is UP in standard SolidWorks views
     direction_map = {
-        "up": (0, 1, 0),      # Top Face
-        "down": (0, -1, 0),   # Bottom Face
-        "front": (0, 0, 1),   # Front Face
-        "back": (0, 0, -1),   # Back Face
-        "right": (1, 0, 0),   # Right Face
-        "left": (-1, 0, 0)    # Left Face
+        "up": (0, 1, 0),
+        "down": (0, -1, 0),
+        "front": (0, 0, 1),
+        "back": (0, 0, -1),
+        "right": (1, 0, 0),
+        "left": (-1, 0, 0)
     }
     
     if direction not in direction_map:
@@ -132,27 +153,27 @@ def create_sketch_on_selected_face():
     """Creates a sketch on the currently selected face."""
     global _SKETCH_ACTIVE
 
+    if _active_sketch() is None:
+        _SKETCH_ACTIVE = False
+
     if _SKETCH_ACTIVE:
         raise Exception("Sketch already active")
 
     model = _model()
     sel_mgr = model.SelectionManager
-    count = sel_mgr.GetSelectedObjectCount
-    if callable(count):
-        count = count()
+    count_val = sel_mgr.GetSelectedObjectCount
+    if callable(count_val):
+        count_val = count_val()
     
-    if count == 0:
+    if count_val == 0:
         raise Exception("No face selected")
     
-    model.SketchManager.InsertSketch(True)
+    # Use the EXACT pattern from the test that worked
+    sm = _model().SketchManager
+    sm.InsertSketch(True)
     _SKETCH_ACTIVE = True
     
     return "Sketch created on selected face"
-
-def create_sketch_on_top_face(height=None):
-    """Wrapper: Selects top face and starts sketch."""
-    select_face_by_normal("up")
-    return create_sketch_on_selected_face()
 
 def exit_sketch():
     """Exits the current sketch."""
@@ -162,10 +183,6 @@ def exit_sketch():
     _model().InsertSketch2(True)
     _SKETCH_ACTIVE = False
     return "Exited sketch"
-
-# ============================================================
-# DRAWING FUNCTIONS
-# ============================================================
 
 def draw_line(x1, y1, x2, y2):
     """Draws a line from (x1,y1) to (x2,y2) in mm."""
@@ -185,10 +202,7 @@ def draw_centerline_vertical():
     return "Vertical centerline drawn"
 
 def draw_rectangle(width, height, x=0, y=0):
-    """
-    Draws a CENTER RECTANGLE logic using corner points.
-    The origin (0,0) will be exactly in the center of the rectangle.
-    """
+    """Draws a rectangle centered at (x, y)."""
     _require_sketch_active()
     
     w_m = width / 1000.0
@@ -196,8 +210,6 @@ def draw_rectangle(width, height, x=0, y=0):
     x_m = x / 1000.0
     y_m = y / 1000.0
     
-    # Calculate corners relative to center (x,y)
-    # This forces the Origin to be the geometric center.
     x1 = x_m - w_m / 2.0
     y1 = y_m - h_m / 2.0
     x2 = x_m + w_m / 2.0
@@ -205,21 +217,16 @@ def draw_rectangle(width, height, x=0, y=0):
     
     _sm().CreateCornerRectangle(x1, y1, 0, x2, y2, 0)
     
-    return f"Rectangle {width}x{height}mm drawn (Centered)"
+    return f"Rectangle {width}x{height}mm drawn (centered)"
 
 def draw_circle(radius, x=0, y=0):
     """Draws a circle at (x,y). All units in mm."""
     _require_sketch_active()
     r = radius / 1000.0
-    xm = x / 1000.0
-    ym = y / 1000.0
-    _sm().CreateCircleByRadius(xm, ym, 0, r)
+    x_m = x / 1000.0
+    y_m = y / 1000.0
+    _sm().CreateCircleByRadius(x_m, y_m, 0, r)
     return f"Circle radius {radius}mm drawn at ({x},{y})"
-
-def draw_ellipse(major_radius, minor_radius):
-    _require_sketch_active()
-    _sm().CreateEllipse(0, 0, 0, major_radius/1000.0, 0, 0, 0, minor_radius/1000.0, 0)
-    return "Ellipse drawn"
 
 def draw_arc(radius, start_angle, end_angle):
     """Draws an arc centered at origin."""
@@ -231,7 +238,7 @@ def draw_arc(radius, start_angle, end_angle):
     x2 = r * math.cos(math.radians(end_angle))
     y2 = r * math.sin(math.radians(end_angle))
     sm.CreateArc(0, 0, 0, x1, y1, 0, x2, y2, 0, 1)
-    return f"Arc radius {radius}mm ({start_angle} to {end_angle} deg)"
+    return f"Arc radius {radius}mm"
 
 def draw_semicircle(radius):
     """Draws a semicircle at origin."""
@@ -272,9 +279,10 @@ def draw_slot(length, width):
     sm.CreateLine(half_len, -r, 0, -half_len, -r, 0)
     return f"Slot {length}x{width}mm drawn"
 
-# ============================================================
-# SKETCH VALIDATION
-# ============================================================
+def draw_ellipse(major_radius, minor_radius):
+    _require_sketch_active()
+    _sm().CreateEllipse(0, 0, 0, major_radius/1000.0, 0, 0, 0, minor_radius/1000.0, 0)
+    return "Ellipse drawn"
 
 def validate_closed_profile():
     """Exits sketch and prepares for feature creation."""
