@@ -241,11 +241,57 @@ def draw_arc(radius, start_angle, end_angle):
     return f"Arc radius {radius}mm"
 
 def draw_semicircle(radius):
-    """Draws a semicircle at origin."""
+    """
+    Draws a semicircle with diameter line for sphere creation.
+    
+    Creates:
+    - Arc1: The semicircle arc (profile to revolve)
+    - Line1: The diameter line (axis for revolve)
+    
+    This creates a closed profile ready for revolve.
+    """
     _require_sketch_active()
+    sm = _sm()
     r = radius / 1000.0
-    _sm().CreateArc(0, 0, 0, r, 0, 0, -r, 0, 0, 1)
-    return f"Semicircle radius {radius}mm drawn"
+    
+    # Create the semicircle arc (from top to bottom on the right side)
+    # Arc goes from (0, r) to (0, -r) curving to the right
+    sm.CreateArc(0, 0, 0, 0, r, 0, 0, -r, 0, 1)
+    
+    # Create the diameter line to close the profile (and serve as axis)
+    # This line connects the two endpoints of the arc
+    sm.CreateLine(0, r, 0, 0, -r, 0)
+    
+    return f"Semicircle radius {radius}mm with diameter line drawn (ready for revolve)"
+
+def draw_triangle(base, height):
+    """
+    Draws a right-angled triangle for Cone creation (Revolve).
+    
+    Creates:
+    - Line1 (Vertical): The axis of revolution (Height).
+    - Line2 (Horizontal): The base radius.
+    - Line3 (Slant): The hypotenuse.
+    
+    This creates a closed profile ready for revolve.
+    """
+    _require_sketch_active()
+    sm = _sm()
+    
+    b = base / 1000.0
+    h = height / 1000.0
+    
+    # Draw Vertical Line (Axis) from Origin up
+    # This will be "Line1" usually
+    sm.CreateLine(0, 0, 0, 0, h, 0)
+    
+    # Draw Base Line from Origin right
+    sm.CreateLine(0, 0, 0, b, 0, 0)
+    
+    # Draw Hypotenuse from (Base, 0) to (0, Height)
+    sm.CreateLine(b, 0, 0, 0, h, 0)
+    
+    return f"Triangle (base={base}mm, height={height}mm) drawn"
 
 def draw_polygon(sides, radius):
     """Draws a regular polygon centered at origin."""
@@ -285,10 +331,8 @@ def draw_ellipse(major_radius, minor_radius):
     return "Ellipse drawn"
 
 def validate_closed_profile():
-    """Exits sketch and prepares for feature creation."""
-    global _SKETCH_ACTIVE
+    """Confirms sketch is active and ready for features."""
     _require_sketch_active()
-    model = _model()
-    model.InsertSketch2(True)
-    _SKETCH_ACTIVE = False
-    return "Sketch validated and closed"
+    # DO NOT EXIT SKETCH HERE. Features (Extrude/Revolve) work best when sketch is active.
+    # The feature creation will automatically consume/close the sketch.
+    return "Sketch profile validated (Sketch remains active)"

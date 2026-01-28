@@ -6,42 +6,14 @@
     {
         "tool": "create_sketch",
         "args": {
-            "plane": "Top"
+            "plane": "Front"
         }
     },
     {
-        "tool": "draw_rectangle",
+        "tool": "draw_triangle",
         "args": {
-            "width": 100,
-            "height": 100
-        }
-    },
-    {
-        "tool": "validate_closed_profile",
-        "args": {}
-    },
-    {
-        "tool": "extrude",
-        "args": {
-            "depth": 50
-        }
-    },
-    {
-        "tool": "select_face_at_coordinate",
-        "args": {
-            "x": 0,
-            "y": 50,
-            "z": 0
-        }
-    },
-    {
-        "tool": "create_sketch_on_selected_face",
-        "args": {}
-    },
-    {
-        "tool": "draw_circle",
-        "args": {
-            "radius": 20
+            "base": 20,
+            "height": 20
         }
     },
     {
@@ -49,72 +21,9 @@
         "args": {}
     },
     {
-        "tool": "extrude",
+        "tool": "revolve",
         "args": {
-            "depth": 50
-        }
-    },
-    {
-        "tool": "select_face_at_coordinate",
-        "args": {
-            "x": 0,
-            "y": 100,
-            "z": 0
-        }
-    },
-    {
-        "tool": "create_sketch_on_selected_face",
-        "args": {}
-    },
-    {
-        "tool": "draw_rectangle",
-        "args": {
-            "width": 50,
-            "height": 50
-        }
-    },
-    {
-        "tool": "validate_closed_profile",
-        "args": {}
-    },
-    {
-        "tool": "extrude",
-        "args": {
-            "depth": 50
-        }
-    },
-    {
-        "tool": "select_face_at_coordinate",
-        "args": {
-            "x": 0,
-            "y": 150,
-            "z": 0
-        }
-    },
-    {
-        "tool": "create_sketch_on_selected_face",
-        "args": {}
-    },
-    {
-        "tool": "draw_circle",
-        "args": {
-            "radius": 25
-        }
-    },
-    {
-        "tool": "draw_circle",
-        "args": {
-            "radius": 10
-        }
-    },
-    {
-        "tool": "validate_closed_profile",
-        "args": {}
-    },
-    {
-        "tool": "cut_extrude",
-        "args": {
-            "depth": 50
+            "angle": 360
         }
     }
 ]

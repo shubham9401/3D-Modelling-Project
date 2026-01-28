@@ -61,6 +61,29 @@ Return ONLY valid JSON array. No markdown, no comments.
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "revolve", "args": {"angle": 360}}
 ]
+
+**Cone (Radius 5mm, Height 50mm):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Front"}},
+    {"tool": "draw_triangle", "args": {"base": 5, "height": 50}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "revolve", "args": {"angle": 360}}
+]
+```
+
+**Cone (Radius 5mm, Height 50mm):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Front"}},
+    {"tool": "draw_triangle", "args": {"base": 5, "height": 50}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "revolve", "args": {"angle": 360}}
+]
+```
+
 Box with hole (Smart Selection):
 
 JSON
@@ -128,6 +151,8 @@ draw_arc(radius, start_angle, end_angle)
 
 draw_semicircle(radius)
 
+draw_triangle(base, height) <- Use for CONE!
+
 draw_polygon(sides, radius)
 
 draw_slot(length, width)
@@ -144,7 +169,9 @@ cut_extrude(depth)
 
 cut_through_all()
 
-revolve(angle=360)
+revolve(angle=360, profile_name="Arc1", axis_name="Line1") <- Auto-selects profile & axis!
+
+revolve_simple(angle=360) <- Use if profile/axis already selected
 
 -- REFINEMENTS --
 

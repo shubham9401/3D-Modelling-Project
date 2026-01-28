@@ -120,15 +120,128 @@ def cut_through_all():
 # REVOLVE
 # ============================================================
 
-def revolve(angle=360):
+def revolve(angle=360, profile_name=None, axis_name="Line1"):
     """
-    Revolve boss feature.
-    Requires axis/centerline to be in sketch.
-    Angle in degrees.
+    Revolve boss feature with proper profile and axis selection.
+    
+    IMPORTANT: This function handles the complete revolve workflow:
+    1. Exits the current sketch (if active)
+    2. Selects the profile (semicircle/arc) 
+    3. Selects the axis line with correct mark value (16)
+    4. Executes the revolve
+    
+    Args:
+        angle: Rotation angle in degrees (default 360 for full revolution)
+        profile_name: Name of the sketch segment to revolve (auto-detects if None)
+        axis_name: Name of the axis line (default "Line1")
     """
     _require_part()
     
-    # FIX: Updated to 20 arguments to match your VBA/Version
+    model = _model()
+    nothing = get_nothing()
+    
+    # Step 1: Ensure we are in an active sketch (or select it)
+    # Since validate_closed_profile now keeps sketch active, we proceed.
+    
+    # Step 2: Clear any existing selection
+    model.ClearSelection2(True)
+    
+    # Step 3: Select the PROFILE (Mark = 0)
+    # IMPORTANT: For a solid revolve, we need a CLOSED profile.
+    # So we must select BOTH the Arc AND the Diameter Line (which is also the axis).
+    
+    # 3a. Select the curved part (Arc)
+    if profile_name:
+        profile_candidates = [profile_name]
+    else:
+        profile_candidates = ["Arc1", "Circle1", "Arc2", "Line2"] # Common names
+    
+    profile_found = False
+    used_profile = None
+    
+    for candidate in profile_candidates:
+        if model.Extension.SelectByID2(candidate, "SKETCHSEGMENT", 0, 0, 0, False, 0, nothing, 0):
+            profile_found = True
+            used_profile = candidate
+            break
+            
+    if not profile_found:
+         # Try selecting just the sketch itself if possible
+         pass 
+
+    # 3b. Select the Axis Line AS PART OF THE PROFILE (Mark 0) to close the loop
+    # We try multiple line names because if draw_centerline was used, Line1 might be construction.
+    # The diameter line might be Line2 (or Line3). 
+    # Selecting extra lines usually doesn't hurt if they are part of the chain or don't exist.
+    line_candidates = [axis_name]
+    if axis_name == "Line1":
+        line_candidates.extend(["Line2", "Line3"])
+        
+    for line_name in line_candidates:
+         model.Extension.SelectByID2(line_name, "SKETCHSEGMENT", 0, 0, 0, True, 0, nothing, 0)
+    
+    # Step 4: Select the AXIS (centerline) with Mark = 16, Append = True
+    # We try multiple candidates for the axis too!
+    # If Line1 (Centerline) fails, we use coordinate fallback.
+    # REMOVED Line2/Line3 candidates because for Cone, Line2 is the Base, which causes Bicone result.
+    axis_candidates = [axis_name]
+    # if axis_name == "Line1":
+    #    axis_candidates.extend(["Line2", "Line3"]) # BAD IDEA for Cones
+        
+    axis_selected = False
+    for ax in axis_candidates:
+        if model.Extension.SelectByID2(ax, "SKETCHSEGMENT", 0, 0, 0, True, 16, nothing, 0):
+            axis_selected = True
+            axis_name = ax # Update used axis name
+            break
+    
+    if not axis_selected:
+        # One last desperate try: Select by coordinate slightly OFF origin along Y axis.
+        # This targets the VERTICAL line (Line1) and avoids the horizontal one (Line2).
+        # 0.001m = 1mm. Most sketches are larger than 1mm.
+        if model.Extension.SelectByID2("", "SKETCHSEGMENT", 0, 0.001, 0, True, 16, nothing, 0):
+             axis_selected = True
+             axis_name = "VerticalLine_Pos"
+        elif model.Extension.SelectByID2("", "SKETCHSEGMENT", 0, -0.001, 0, True, 16, nothing, 0):
+             axis_selected = True
+             axis_name = "VerticalLine_Neg"
+
+    if not axis_selected:
+        raise Exception(f"Failed to select axis. Tried names: {axis_candidates} and Vertical coordinates.")
+    
+    # Step 5: Execute the revolve
+    _fm().FeatureRevolve2(
+        True,                   # SingleDir
+        True,                   # IsSolid
+        False,                  # IsThin
+        False,                  # ReverseDir
+        False,                  # ReverseDir2
+        False,                  # MergeFaces
+        0,                      # Dir1Type (0=Blind)
+        0,                      # Dir2Type
+        math.radians(angle),    # Dir1Angle
+        0,                      # Dir2Angle
+        False,                  # ReverseOffset
+        False,                  # UseOffset2
+        0.01,                   # Offset1
+        0.01,                   # Offset2
+        0,                      # ThinType
+        0,                      # ThinThickness1
+        0,                      # ThinThickness2
+        True,                   # UseFeatScope
+        True,                   # UseAutoSelect
+        True                    # PropagateFeatureToParts
+    )
+    return f"Revolved {angle} degrees (profile={used_profile}, axis={axis_name})"
+
+
+def revolve_simple(angle=360):
+    """
+    Simple revolve - assumes profile and axis are already selected.
+    Use this if you've manually selected the profile (mark=0) and axis (mark=16).
+    """
+    _require_part()
+    
     _fm().FeatureRevolve2(
         True,                   # SingleDir
         True,                   # IsSolid

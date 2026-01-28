@@ -41,6 +41,7 @@ TOOL_REGISTRY = {
     "draw_ellipse": sketch.draw_ellipse,
     "draw_polygon": sketch.draw_polygon,
     "draw_slot": sketch.draw_slot,
+    "draw_triangle": sketch.draw_triangle,
     
     # Sketch validation
     "validate_closed_profile": sketch.validate_closed_profile,
@@ -51,6 +52,7 @@ TOOL_REGISTRY = {
     "cut_extrude": feature.cut_extrude,
     "cut_through_all": feature.cut_through_all,
     "revolve": feature.revolve,
+    "revolve_simple": feature.revolve_simple,
     "fillet": feature.fillet,
     "chamfer": feature.chamfer,
     
