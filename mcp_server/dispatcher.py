@@ -53,6 +53,8 @@ TOOL_REGISTRY = {
     "cut_through_all": feature.cut_through_all,
     "revolve": feature.revolve,
     "revolve_simple": feature.revolve_simple,
+    "shell": feature.shell,
+    "loft": feature.loft,
     "fillet": feature.fillet,
     "chamfer": feature.chamfer,
     

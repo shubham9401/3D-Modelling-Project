@@ -267,6 +267,62 @@ def revolve_simple(angle=360):
     return f"Revolved {angle} degrees"
 
 # ============================================================
+# SHELL & LOFT
+# ============================================================
+
+def shell(thickness):
+    """
+    Shell feature - hollows out a solid body.
+    
+    IMPORTANT: Pre-select the face(s) to REMOVE before calling this!
+    Use select_face_at_coordinate() to select the top face first.
+    
+    Based on VBA: Part.InsertFeatureShell(thickness, outward)
+    
+    Args:
+        thickness: Wall thickness in mm
+    """
+    _require_part()
+    model = _model()
+    
+    t = thickness / 1000.0  # Convert mm to meters
+    
+    # InsertFeatureShell is on ModelDoc2, NOT FeatureManager!
+    # Parameters: 
+    #   Thickness (double in meters)
+    #   Outward (bool): False = shell inward (normal for cups), True = shell outward
+    try:
+        result = model.InsertFeatureShell(t, False)
+        # InsertFeatureShell may return None on success - don't check return value
+        # VBA macro also doesn't check return value
+    except Exception as e:
+        raise Exception(f"Shell failed with error: {e}")
+    
+    return f"Shell: {thickness}mm walls"
+
+def loft():
+    """
+    Loft feature - creates smooth transition between selected profiles.
+    Requires: Two or more sketches selected before calling.
+    """
+    _require_part()
+    
+    _fm().InsertProtrusionBlend(
+        False,  # Closed
+        True,   # KeepTangency  
+        False,  # ForceNonRational
+        1.0,    # TightnessFactor
+        0,      # StartTangentType
+        0,      # EndTangentType
+        False,  # IsThinBody
+        0, 0,   # Thickness1, 2
+        0,      # ThicknessType
+        True,   # UseFeatScope
+        False   # PropagateFeatureToParts
+    )
+    return "Loft created between profiles"
+
+# ============================================================
 # REFINEMENTS
 # ============================================================
 

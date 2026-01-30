@@ -73,17 +73,37 @@ def create_sketch(plane: str):
     return f"Sketch created on {plane} Plane"
 
 def select_face_at_coordinate(x, y, z):
-    """Selects a face at a specific 3D coordinate (mm)."""
+    """
+    Selects a face at a specific 3D coordinate (mm).
+    Uses SelectByRay for more reliable selection (like VBA macro).
+    """
     model = _model()
     nothing = get_nothing()
     model.ClearSelection2(True)
     
     x_m, y_m, z_m = x/1000.0, y/1000.0, z/1000.0
     
+    # Try SelectByID2 first
     status = model.Extension.SelectByID2("", "FACE", x_m, y_m, z_m, False, 0, nothing, 0)
     
     if not status:
-        for offset in [0.0001, -0.0001, 0.0002, -0.0002]:
+        # If failed, try SelectByRay - cast a ray downward from above the point
+        # SelectByRay(RayOriginX, RayOriginY, RayOriginZ, RayDirX, RayDirY, RayDirZ, Radius, Type, Append, Mark, Option)
+        # Type = 2 for faces
+        # Direction: shoot ray downward (-Y) to hit top face
+        status = model.Extension.SelectByRay(
+            x_m, y_m + 0.01, z_m,    # Origin: slightly above the target point
+            0, -1, 0,                 # Direction: straight down (-Y)
+            0.001,                    # Radius (small value)
+            2,                        # Type: 2 = face
+            False,                    # Append
+            0,                        # Mark
+            0                         # Option
+        )
+    
+    if not status:
+        # Try other offsets with SelectByID2
+        for offset in [0.001, -0.001, 0.002, -0.002]:
             status = model.Extension.SelectByID2("", "FACE", x_m, y_m + offset, z_m, False, 0, nothing, 0)
             if status:
                 break

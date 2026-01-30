@@ -73,6 +73,19 @@ Return ONLY valid JSON array. No markdown, no comments.
 ]
 ```
 
+**Cup (40mm radius, 100mm tall, 3mm walls):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 40}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 100}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 100, "z": 0}},
+    {"tool": "shell", "args": {"thickness": 3}}
+]
+```
+
 **Cone (Radius 5mm, Height 50mm):**
 ```json
 [
@@ -172,6 +185,10 @@ cut_through_all()
 revolve(angle=360, profile_name="Arc1", axis_name="Line1") <- Auto-selects profile & axis!
 
 revolve_simple(angle=360) <- Use if profile/axis already selected
+
+shell(thickness) <- Hollows body. PRE-SELECT face to remove first!
+
+loft() <- Smooth shape between 2+ selected sketch profiles
 
 -- REFINEMENTS --
 
