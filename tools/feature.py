@@ -576,3 +576,122 @@ def get_feature_count():
     """Returns feature count."""
     _require_part()
     return _model().GetFeatureCount(False)
+
+def thread(diameter=6, pitch=1.0, depth=10, size=None, right_handed=True, thread_method="cut"):
+    """
+    Creates a thread feature on the selected cylindrical edge.
+    
+    IMPORTANT: Pre-select the circular edge before calling this function!
+    Use select_edge_at_coordinate() first.
+    
+    Args:
+        diameter: Thread diameter in mm (default 6 for M6)
+        pitch: Thread pitch in mm (default 1.0)
+        depth: Thread depth in mm (default 10)
+        size: Thread size string like "M6x1.0" (auto-generated if None)
+        right_handed: True for right-hand thread, False for left-hand (default True)
+        thread_method: "cut" for cut thread, "extrude" for extruded thread (default "cut")
+    """
+    _require_part()
+    model = _model()
+    fm = _fm()
+    
+    # Convert to meters
+    d = diameter / 1000.0
+    p = pitch / 1000.0
+    depth_m = depth / 1000.0
+    
+    # Generate size string if not provided
+    if size is None:
+        size = f"M{int(diameter)}x{pitch}"
+    
+    # Check edge is selected
+    selMgr = model.SelectionManager
+    sel_count = selMgr.GetSelectedObjectCount2(-1)
+    if sel_count == 0:
+        raise Exception("No edge selected for thread! Select a circular edge first.")
+    
+    print(f"    DEBUG: {sel_count} edge(s) selected for thread, size={size}, depth={depth}mm")
+    
+    # Get feature count before
+    feat_count_before = fm.GetFeatureCount(True)
+    
+    # Scan a wide range to find valid feature type IDs
+    # First, find all valid IDs that return non-None objects
+    print("    DEBUG: Scanning for valid CreateDefinition IDs...")
+    valid_ids = []
+    for type_id in range(0, 300):
+        try:
+            swFeatData = fm.CreateDefinition(type_id)
+            if swFeatData is not None:
+                valid_ids.append(type_id)
+        except:
+            pass
+    
+    print(f"    DEBUG: Found {len(valid_ids)} valid IDs: {valid_ids[:20]}...")  # Show first 20
+    
+    # Now try each valid ID and check if it has thread-related methods
+    for type_id in valid_ids:
+        try:
+            swFeatData = fm.CreateDefinition(type_id)
+            if swFeatData is None:
+                continue
+                
+            # Try to call InitializeThreadData - if it works, this is a thread type
+            try:
+                swFeatData.InitializeThreadData()
+                print(f"    DEBUG: Found thread type at ID {type_id}!")
+                
+                # Set all properties from VBA macro
+                swFeatData.BlindDepth = depth_m
+                swFeatData.DiameterOverride = False
+                swFeatData.EndCondition = 0  # swThreadEndCondition_Blind
+                swFeatData.EndConditionOffset = False
+                swFeatData.EndConditionOffsetDistance = 0.001
+                swFeatData.EndConditionOffsetReverse = False
+                swFeatData.MaintainThreadLength = False
+                swFeatData.MirrorProfile = False
+                swFeatData.MirrorType = 0  # swThreadMirrorType_Horizontally
+                swFeatData.MultipleStart = False
+                swFeatData.NumberOfStarts = 2
+                swFeatData.Offset = False
+                swFeatData.OffsetDistance = 0.001
+                swFeatData.PitchOverride = False
+                swFeatData.ReverseDirection = False
+                swFeatData.ReverseOffset = False
+                swFeatData.Revolutions = int(depth / pitch) if pitch > 0 else 10
+                swFeatData.RightHanded = right_handed
+                swFeatData.RotationAngle = 0
+                swFeatData.ThreadMethod = 0 if thread_method == "cut" else 1
+                swFeatData.ThreadStartAngle = 0
+                swFeatData.TrimEndFace = False
+                swFeatData.TrimStartFace = False
+                swFeatData.Type = r"C:\ProgramData\SolidWorks\SOLIDWORKS 2025\thread profiles\Metric Die.SLDLFP"
+                swFeatData.Diameter = d
+                swFeatData.Pitch = p
+                swFeatData.Size = size
+                
+                result = fm.CreateFeature(swFeatData)
+                
+                feat_count_after = fm.GetFeatureCount(True)
+                if feat_count_after > feat_count_before:
+                    try:
+                        model.ForceRebuild3(True)
+                    except:
+                        pass
+                    return f"Thread {size} created with depth {depth}mm (type_id={type_id})"
+                    
+            except AttributeError:
+                # No InitializeThreadData method, skip
+                pass
+            except Exception as e:
+                # InitializeThreadData exists but failed - still might be thread type
+                print(f"    DEBUG: ID {type_id} has issues: {e}")
+                
+        except Exception as e:
+            pass
+    
+    # Clear selection and notify
+    model.ClearSelection2(True)
+    
+    raise Exception(f"Thread creation failed for {size}. No valid thread feature type found in IDs 0-300.")

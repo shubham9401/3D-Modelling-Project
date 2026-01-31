@@ -62,6 +62,7 @@ TOOL_REGISTRY = {
     "loft": feature.loft,
     "fillet": feature.fillet,
     "chamfer": feature.chamfer,
+    "thread": feature.thread,
     
     # Patterns
     "linear_pattern": feature.linear_pattern,

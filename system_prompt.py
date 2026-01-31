@@ -147,6 +147,37 @@ JSON
     {"tool": "fillet", "args": {"radius": 5}}
 ]
 ```
+
+**Threaded Bolt (M6x1.0, 6mm diameter shaft, 20mm length, 10mm thread depth):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 3}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 20}},
+    {"tool": "select_edge_at_coordinate", "args": {"x": 3, "y": 0, "z": 0}},
+    {"tool": "thread", "args": {"diameter": 6, "pitch": 1.0, "depth": 10}}
+]
+```
+
+**Hex Head Bolt (M6x1.0, 10mm hex head, 30mm shaft):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_hexagon", "args": {"radius": 5}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 5}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 5, "z": 0}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_circle", "args": {"radius": 3}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 30}},
+    {"tool": "select_edge_at_coordinate", "args": {"x": 3, "y": 5, "z": 0}},
+    {"tool": "thread", "args": {"diameter": 6, "pitch": 1.0, "depth": 25}}
+]
+```
 """
 
 AVAILABLE_TOOLS = """ -- PART --
@@ -187,6 +218,8 @@ draw_triangle(base, height) <- Use for CONE!
 
 draw_polygon(sides, radius)
 
+draw_hexagon(radius) <- Use for bolt heads!
+
 draw_slot(length, width)
 
 -- FINALIZE & FEATURES --
@@ -214,6 +247,14 @@ loft() <- Smooth shape between 2+ selected sketch profiles
 fillet(radius) <- PRE-SELECT edge with select_edge_at_coordinate!
 
 chamfer(distance, angle)
+
+-- THREADS (for bolts/screws) --
+
+thread(diameter, pitch, depth) <- PRE-SELECT circular edge! Uses Metric Die profile.
+    Example: M6x1.0 thread = thread(diameter=6, pitch=1.0, depth=10)
+    Common sizes: M3x0.5, M4x0.7, M5x0.8, M6x1.0, M8x1.25, M10x1.5
+
+-- PATTERNS --
 
 linear_pattern(count, spacing)
 
