@@ -10,10 +10,9 @@
         }
     },
     {
-        "tool": "draw_rectangle",
+        "tool": "draw_hexagon",
         "args": {
-            "width": 100,
-            "height": 100
+            "radius": 10
         }
     },
     {
@@ -23,78 +22,33 @@
     {
         "tool": "extrude",
         "args": {
-            "depth": 100
+            "depth": 10
         }
     },
     {
-        "tool": "select_edge_at_coordinate",
+        "tool": "select_face_at_coordinate",
         "args": {
-            "x": 50,
-            "y": 100,
+            "x": 0,
+            "y": 10,
             "z": 0
         }
     },
     {
-        "tool": "select_edge_at_coordinate_append",
+        "tool": "create_sketch_on_selected_face",
+        "args": {}
+    },
+    {
+        "tool": "draw_circle",
         "args": {
-            "x": 50,
-            "y": 0,
-            "z": 0
+            "radius": 5
         }
     },
     {
-        "tool": "select_edge_at_coordinate_append",
-        "args": {
-            "x": 0,
-            "y": 0,
-            "z": 0
-        }
+        "tool": "validate_closed_profile",
+        "args": {}
     },
     {
-        "tool": "select_edge_at_coordinate_append",
-        "args": {
-            "x": 0,
-            "y": 100,
-            "z": 0
-        }
-    },
-    {
-        "tool": "select_edge_at_coordinate_append",
-        "args": {
-            "x": 0,
-            "y": 0,
-            "z": 50
-        }
-    },
-    {
-        "tool": "select_edge_at_coordinate_append",
-        "args": {
-            "x": 0,
-            "y": 100,
-            "z": 50
-        }
-    },
-    {
-        "tool": "select_edge_at_coordinate_append",
-        "args": {
-            "x": 50,
-            "y": 0,
-            "z": 50
-        }
-    },
-    {
-        "tool": "select_edge_at_coordinate_append",
-        "args": {
-            "x": 50,
-            "y": 100,
-            "z": 50
-        }
-    },
-    {
-        "tool": "chamfer",
-        "args": {
-            "distance": 10,
-            "angle": 45
-        }
+        "tool": "cut_through_all",
+        "args": {}
     }
 ]

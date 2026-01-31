@@ -46,6 +46,7 @@ TOOL_REGISTRY = {
     "draw_polygon": sketch.draw_polygon,
     "draw_slot": sketch.draw_slot,
     "draw_triangle": sketch.draw_triangle,
+    "draw_hexagon": sketch.draw_hexagon,
     
     # Sketch validation
     "validate_closed_profile": sketch.validate_closed_profile,

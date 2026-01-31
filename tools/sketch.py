@@ -426,6 +426,38 @@ def draw_polygon(sides, radius):
     
     return f"{sides}-sided polygon drawn"
 
+def draw_hexagon(radius, x=0, y=0):
+    """
+    Draws a regular hexagon centered at (x, y).
+    
+    Args:
+        radius: Distance from center to vertex in mm
+        x: Center X coordinate in mm (default 0)
+        y: Center Y coordinate in mm (default 0)
+    """
+    _require_sketch_active()
+    
+    r = radius / 1000.0
+    x_m = x / 1000.0
+    y_m = y / 1000.0
+    
+    # Generate 6 vertices of hexagon
+    points = []
+    for i in range(6):
+        angle = 2 * math.pi * i / 6
+        px = x_m + r * math.cos(angle)
+        py = y_m + r * math.sin(angle)
+        points.append((px, py))
+    
+    # Draw 6 lines connecting the vertices
+    sm = _sm()
+    for i in range(6):
+        x1, y1 = points[i]
+        x2, y2 = points[(i + 1) % 6]
+        sm.CreateLine(x1, y1, 0, x2, y2, 0)
+    
+    return f"Hexagon radius {radius}mm drawn at ({x}, {y})"
+
 def draw_slot(length, width):
     """Draws a slot shape."""
     _require_sketch_active()
