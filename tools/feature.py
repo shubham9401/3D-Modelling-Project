@@ -695,3 +695,128 @@ def thread(diameter=6, pitch=1.0, depth=10, size=None, right_handed=True, thread
     model.ClearSelection2(True)
     
     raise Exception(f"Thread creation failed for {size}. No valid thread feature type found in IDs 0-300.")
+
+def thread_tap(diameter=6, pitch=1.0, depth=10, size=None, right_handed=True):
+    """
+    Creates an internal thread (tap) feature on the selected circular edge of a hole.
+    This is used for NUTS and threaded holes.
+    
+    IMPORTANT: Pre-select the circular edge of a hole before calling this function!
+    Use select_edge_at_coordinate() first.
+    
+    Args:
+        diameter: Thread diameter in mm (default 6 for M6)
+        pitch: Thread pitch in mm (default 1.0)
+        depth: Thread depth in mm (default 10)
+        size: Thread size string like "M6x1.0" (auto-generated if None)
+        right_handed: True for right-hand thread, False for left-hand (default True)
+    """
+    _require_part()
+    model = _model()
+    fm = _fm()
+    
+    # Convert to meters
+    d = diameter / 1000.0
+    p = pitch / 1000.0
+    depth_m = depth / 1000.0
+    
+    # Generate size string if not provided
+    if size is None:
+        size = f"M{int(diameter)}x{pitch}"
+    
+    # Check edge is selected
+    selMgr = model.SelectionManager
+    sel_count = selMgr.GetSelectedObjectCount2(-1)
+    if sel_count == 0:
+        raise Exception("No edge selected for thread! Select a circular edge of the hole first.")
+    
+    print(f"    DEBUG: {sel_count} edge(s) selected for tap thread, size={size}, depth={depth}mm")
+    
+    # Get feature count before
+    feat_count_before = fm.GetFeatureCount(True)
+    
+    # Use the known thread type ID (87 = swFmSweepThread in SW 2025)
+    thread_type_id = 87
+    
+    try:
+        print(f"    DEBUG: Trying CreateDefinition({thread_type_id})...")
+        swFeatData = fm.CreateDefinition(thread_type_id)
+        print(f"    DEBUG: CreateDefinition returned: {swFeatData}")
+        
+        if swFeatData is None:
+            # Fallback: scan for thread type
+            print("    DEBUG: Scanning for thread type ID...")
+            for type_id in range(0, 300):
+                try:
+                    swFeatData = fm.CreateDefinition(type_id)
+                    if swFeatData is not None:
+                        try:
+                            swFeatData.InitializeThreadData()
+                            thread_type_id = type_id
+                            print(f"    DEBUG: Found thread type at ID {type_id}")
+                            break
+                        except:
+                            swFeatData = None
+                except:
+                    pass
+        
+        if swFeatData is None:
+            raise Exception("Could not find thread feature type")
+        
+        print(f"    DEBUG: Initializing thread data...")
+        swFeatData.InitializeThreadData()
+        
+        print(f"    DEBUG: Setting thread properties...")
+        # Set all properties for internal tap thread
+        swFeatData.BlindDepth = depth_m
+        swFeatData.DiameterOverride = False
+        swFeatData.EndCondition = 0  # swThreadEndCondition_Blind
+        swFeatData.EndConditionOffset = False
+        swFeatData.EndConditionOffsetDistance = 0.001
+        swFeatData.EndConditionOffsetReverse = False
+        swFeatData.MaintainThreadLength = False
+        swFeatData.MirrorProfile = False
+        swFeatData.MirrorType = 0  # swThreadMirrorType_Horizontally
+        swFeatData.MultipleStart = False
+        swFeatData.NumberOfStarts = 2
+        swFeatData.Offset = False
+        swFeatData.OffsetDistance = 0.001
+        swFeatData.PitchOverride = False
+        swFeatData.ReverseDirection = False
+        swFeatData.ReverseOffset = False
+        swFeatData.Revolutions = int(depth / pitch) if pitch > 0 else 10
+        swFeatData.RightHanded = right_handed
+        swFeatData.RotationAngle = 0
+        swFeatData.ThreadMethod = 0  # swThreadMethod_Cut
+        swFeatData.ThreadStartAngle = 0
+        swFeatData.TrimEndFace = False
+        swFeatData.TrimStartFace = False
+        # Use Metric TAP profile for internal threads (nuts)
+        swFeatData.Type = r"C:\ProgramData\SolidWorks\SOLIDWORKS 2025\thread profiles\Metric Tap.SLDLFP"
+        swFeatData.Diameter = d
+        swFeatData.Pitch = p
+        swFeatData.Size = size
+        
+        print(f"    DEBUG: Creating feature...")
+        result = fm.CreateFeature(swFeatData)
+        print(f"    DEBUG: CreateFeature returned: {result}")
+        
+        feat_count_after = fm.GetFeatureCount(True)
+        print(f"    DEBUG: Feature count before={feat_count_before}, after={feat_count_after}")
+        
+        if feat_count_after > feat_count_before:
+            try:
+                model.ForceRebuild3(True)
+            except:
+                pass
+            return f"Tap thread {size} created with depth {depth}mm (internal thread for nut)"
+            
+    except Exception as e:
+        print(f"    DEBUG: Tap thread creation exception: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Clear selection and notify
+    model.ClearSelection2(True)
+    
+    raise Exception(f"Tap thread creation failed for {size}. Make sure you selected the circular edge of a hole.")

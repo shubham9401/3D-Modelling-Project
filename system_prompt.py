@@ -178,6 +178,24 @@ JSON
     {"tool": "thread", "args": {"diameter": 6, "pitch": 1.0, "depth": 25}}
 ]
 ```
+
+**Hex Nut (M6x1.0, 10mm across flats, 5mm thick):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_hexagon", "args": {"radius": 5}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 5}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 5, "z": 0}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_circle", "args": {"radius": 2.5}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "cut_through_all", "args": {}},
+    {"tool": "select_edge_at_coordinate", "args": {"x": 2.5, "y": 5, "z": 0}},
+    {"tool": "thread_tap", "args": {"diameter": 6, "pitch": 1.0, "depth": 5}}
+]
+```
 """
 
 AVAILABLE_TOOLS = """ -- PART --
@@ -248,11 +266,17 @@ fillet(radius) <- PRE-SELECT edge with select_edge_at_coordinate!
 
 chamfer(distance, angle)
 
--- THREADS (for bolts/screws) --
+-- THREADS (for bolts/screws/nuts) --
 
-thread(diameter, pitch, depth) <- PRE-SELECT circular edge! Uses Metric Die profile.
-    Example: M6x1.0 thread = thread(diameter=6, pitch=1.0, depth=10)
-    Common sizes: M3x0.5, M4x0.7, M5x0.8, M6x1.0, M8x1.25, M10x1.5
+thread(diameter, pitch, depth) <- EXTERNAL thread for BOLTS! Uses Metric Die profile.
+    PRE-SELECT the circular edge of a cylinder.
+    Example: M6x1.0 bolt thread = thread(diameter=6, pitch=1.0, depth=10)
+    
+thread_tap(diameter, pitch, depth) <- INTERNAL thread for NUTS! Uses Metric Tap profile.
+    PRE-SELECT the circular edge of a HOLE.
+    Example: M6x1.0 nut thread = thread_tap(diameter=6, pitch=1.0, depth=5)
+    
+Common metric thread sizes: M3x0.5, M4x0.7, M5x0.8, M6x1.0, M8x1.25, M10x1.5
 
 -- PATTERNS --
 
