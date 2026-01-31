@@ -1,0 +1,44 @@
+[
+    {
+        "tool": "create_part",
+        "args": {}
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Top"
+        }
+    },
+    {
+        "tool": "draw_rectangle",
+        "args": {
+            "width": 100,
+            "height": 100
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "extrude",
+        "args": {
+            "depth": 100
+        }
+    },
+    {
+        "tool": "select_edge_at_coordinate",
+        "args": {
+            "x": 50,
+            "y": 100,
+            "z": 0
+        }
+    },
+    {
+        "tool": "chamfer",
+        "args": {
+            "distance": 10,
+            "angle": 45
+        }
+    }
+]

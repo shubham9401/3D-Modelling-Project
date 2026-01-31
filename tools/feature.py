@@ -327,18 +327,231 @@ def loft():
 # ============================================================
 
 def fillet(radius):
-    """Fillet selected edges."""
+    """
+    Fillet selected edges.
+    
+    Args:
+        radius: Fillet radius in mm
+    """
+    import win32com.client
+    import pythoncom
+    
     _require_part()
-    r = radius / 1000.0
-    _fm().InsertFeatureFillet(195, r, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    return f"Fillet: {radius}mm"
+    model = _model()
+    fm = _fm()
+    
+    r = radius / 1000.0  # Convert mm to meters
+    
+    # Check edges are selected
+    selMgr = model.SelectionManager
+    sel_count = selMgr.GetSelectedObjectCount2(-1)
+    if sel_count == 0:
+        raise Exception("No edges selected!")
+    
+    print(f"    DEBUG: {sel_count} edge(s) selected for fillet, radius={r}m")
+    
+    # Get feature count before to verify fillet creation
+    feat_count_before = fm.GetFeatureCount(True)
+    
+    # Create empty VARIANT for None/Nothing values
+    nothing = win32com.client.VARIANT(pythoncom.VT_DISPATCH, None)
+    
+    # Try different option values for FeatureFillet
+    # swFeatureFilletOptions_e:
+    # 1 = swFeatureFilletUniformRadius
+    # 2 = swFeatureFilletKeepEdge  
+    # 4 = swFeatureFilletKeepSurface
+    # 64 = swFeatureFilletPropagate
+    # 128 = swFeatureFilletFullPreview
+    # Commonly used: 1 (uniform radius), 65 (uniform + propagate)
+    
+    options_to_try = [1, 65, 193, 195, 0, 64, 128, 3]
+    
+    for opts in options_to_try:
+        try:
+            print(f"    DEBUG: Trying FeatureFillet with Options={opts}...")
+            result = fm.FeatureFillet(opts, r, 0, 0, nothing, nothing, nothing)
+            
+            # Check if feature count increased
+            feat_count_after = fm.GetFeatureCount(True)
+            if feat_count_after > feat_count_before:
+                print(f"    DEBUG: Feature count increased from {feat_count_before} to {feat_count_after}")
+                return f"Fillet: {radius}mm applied (Options={opts})"
+            
+            if result is not None:
+                return f"Fillet: {radius}mm applied"
+                
+        except Exception as e:
+            print(f"    DEBUG: FeatureFillet Options={opts} failed: {e}")
+    
+    # Try FeatureFillet3 with different options
+    for opts in [1, 65, 193, 0]:
+        try:
+            print(f"    DEBUG: Trying FeatureFillet3 with Options={opts}...")
+            result = fm.FeatureFillet3(
+                opts, r, 0, 0,
+                nothing, nothing, nothing, nothing, nothing,
+                False, False
+            )
+            
+            feat_count_after = fm.GetFeatureCount(True)
+            if feat_count_after > feat_count_before:
+                return f"Fillet: {radius}mm applied (FF3 Options={opts})"
+                
+            if result is not None:
+                return f"Fillet: {radius}mm applied"
+        except Exception as e:
+            print(f"    DEBUG: FeatureFillet3 Options={opts} failed: {e}")
+    
+    # Try using SimpleFillet via ISimpleFilletFeatureData2
+    for feat_type in [47, 52, 148, 149, 150]:
+        try:
+            print(f"    DEBUG: Trying CreateDefinition({feat_type})...")
+            swFeatData = fm.CreateDefinition(feat_type)
+            if swFeatData is not None:
+                print(f"    DEBUG: CreateDefinition({feat_type}) returned object")
+                try:
+                    swFeatData.Initialize(0)
+                except:
+                    pass
+                try:
+                    swFeatData.DefaultRadius = r
+                except:
+                    pass
+                try:
+                    # Get edges from selection
+                    edges = []
+                    for i in range(1, sel_count + 1):
+                        edge = selMgr.GetSelectedObject6(i, -1)
+                        if edge:
+                            edges.append(edge)
+                    if edges:
+                        swFeatData.Edges = tuple(edges)
+                except:
+                    pass
+                
+                result = fm.CreateFeature(swFeatData)
+                feat_count_after = fm.GetFeatureCount(True)
+                if feat_count_after > feat_count_before:
+                    return f"Fillet: {radius}mm applied (type={feat_type})"
+        except Exception as e:
+            print(f"    DEBUG: CreateDefinition({feat_type}) failed: {e}")
+    
+    raise Exception(f"Fillet failed for {radius}mm. Feature was not created in model.")
 
 def chamfer(distance, angle=45):
-    """Chamfer selected edges."""
+    """
+    Chamfer selected edges.
+    
+    IMPORTANT: Pre-select the edge(s) before calling this function!
+    Use select_edge_at_coordinate() first.
+    
+    Args:
+        distance: Chamfer distance in mm
+        angle: Chamfer angle in degrees (default 45)
+    """
     _require_part()
-    d = distance / 1000.0
-    _fm().InsertFeatureChamfer(4, d, math.radians(angle), 0, 0, 0, 0, 0)
-    return f"Chamfer: {distance}mm @ {angle}°"
+    model = _model()
+    fm = _fm()
+    
+    d = distance / 1000.0  # Convert mm to meters
+    a = math.radians(angle)  # Convert degrees to radians
+    
+    # Check edges are selected
+    selMgr = model.SelectionManager
+    sel_count = selMgr.GetSelectedObjectCount2(-1)
+    if sel_count == 0:
+        raise Exception("No edges selected for chamfer!")
+    
+    print(f"    DEBUG: {sel_count} edge(s) selected for chamfer, distance={d}m, angle={angle}deg")
+    
+    # Get feature count before to verify chamfer creation
+    feat_count_before = fm.GetFeatureCount(True)
+    
+    # VBA signature from user: InsertFeatureChamfer(swConstRadiusFillet, 6, 1, 0.01, 0.78539816339745, 0, 0, 0, 0)
+    # That's 9 parameters but we got "Invalid number of parameters"
+    # Let's try different parameter counts
+    
+    # Try 5 parameters: InsertFeatureChamfer(Type, Options, Distance, Angle, SecondDist)
+    try:
+        print("    DEBUG: Trying InsertFeatureChamfer with 5 params...")
+        result = fm.InsertFeatureChamfer(0, 4, d, a, d)
+        feat_count_after = fm.GetFeatureCount(True)
+        if feat_count_after > feat_count_before:
+            return f"Chamfer: {distance}mm @ {angle}deg applied (5 params)"
+    except Exception as e:
+        print(f"    DEBUG: 5 params failed: {e}")
+    
+    # Try 6 parameters
+    try:
+        print("    DEBUG: Trying InsertFeatureChamfer with 6 params...")
+        result = fm.InsertFeatureChamfer(0, 4, 1, d, a, d)
+        feat_count_after = fm.GetFeatureCount(True)
+        if feat_count_after > feat_count_before:
+            return f"Chamfer: {distance}mm @ {angle}deg applied (6 params)"
+    except Exception as e:
+        print(f"    DEBUG: 6 params failed: {e}")
+    
+    # Try 7 parameters (SolidWorks 2020+ style)
+    try:
+        print("    DEBUG: Trying InsertFeatureChamfer with 7 params...")
+        result = fm.InsertFeatureChamfer(0, 6, 1, d, a, 0, 0)
+        feat_count_after = fm.GetFeatureCount(True)
+        if feat_count_after > feat_count_before:
+            return f"Chamfer: {distance}mm @ {angle}deg applied (7 params)"
+    except Exception as e:
+        print(f"    DEBUG: 7 params failed: {e}")
+    
+    # Try 8 parameters
+    try:
+        print("    DEBUG: Trying InsertFeatureChamfer with 8 params...")
+        result = fm.InsertFeatureChamfer(0, 6, 1, d, a, 0, 0, 0)
+        feat_count_after = fm.GetFeatureCount(True)
+        if feat_count_after > feat_count_before:
+            # Rebuild model to refresh graphics
+            try:
+                model.ForceRebuild3(True)
+            except:
+                try:
+                    model.EditRebuild3()
+                except:
+                    pass
+            return f"Chamfer: {distance}mm @ {angle}deg applied (8 params)"
+    except Exception as e:
+        print(f"    DEBUG: 8 params failed: {e}")
+    
+    # Try 10 parameters (some versions)
+    try:
+        print("    DEBUG: Trying InsertFeatureChamfer with 10 params...")
+        result = fm.InsertFeatureChamfer(0, 6, 1, d, a, 0, 0, 0, 0, 0)
+        feat_count_after = fm.GetFeatureCount(True)
+        if feat_count_after > feat_count_before:
+            return f"Chamfer: {distance}mm @ {angle}deg applied (10 params)"
+    except Exception as e:
+        print(f"    DEBUG: 10 params failed: {e}")
+    
+    # Try FeatureChamfer (alternative method)
+    try:
+        print("    DEBUG: Trying FeatureChamfer...")
+        result = fm.FeatureChamfer(d, a, False)
+        feat_count_after = fm.GetFeatureCount(True)
+        if feat_count_after > feat_count_before:
+            return f"Chamfer: {distance}mm @ {angle}deg applied (FeatureChamfer)"
+    except Exception as e:
+        print(f"    DEBUG: FeatureChamfer failed: {e}")
+    
+    # Try the exact VBA signature
+    try:
+        print("    DEBUG: Trying exact VBA signature...")
+        # swConstRadiusFillet = 0, options = 6, count = 1, distance = 0.01, angle = 0.785...
+        result = fm.InsertFeatureChamfer(0, 6, 1, d, a, 0, 0, 0, 0)
+        feat_count_after = fm.GetFeatureCount(True)
+        if feat_count_after > feat_count_before:
+            return f"Chamfer: {distance}mm @ {angle}deg applied (VBA style)"
+    except Exception as e:
+        print(f"    DEBUG: VBA style failed: {e}")
+    
+    raise Exception(f"Chamfer failed for {distance}mm. All parameter combinations failed.")
 
 def linear_pattern(count, spacing):
     """Linear pattern."""

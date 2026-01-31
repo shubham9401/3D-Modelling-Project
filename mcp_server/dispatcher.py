@@ -31,6 +31,10 @@ TOOL_REGISTRY = {
     "select_face_by_normal": sketch.select_face_by_normal,
     "select_face_at_coordinate": sketch.select_face_at_coordinate,
     
+    # Edge selection (for fillet, chamfer)
+    "select_edge_at_coordinate": sketch.select_edge_at_coordinate,
+    "select_edge_at_coordinate_append": sketch.select_edge_at_coordinate_append,
+    
     # Sketch primitives
     "draw_line": sketch.draw_line,
     "draw_centerline_vertical": sketch.draw_centerline_vertical,
@@ -90,15 +94,15 @@ def execute_action(action: dict) -> str:
     return result
 
 def run_mission(filepath: str):
-    print(f"📂 Loading mission from: {filepath}")
+    print(f"[LOAD] Loading mission from: {filepath}")
     
     try:
         actions = load_mission(filepath)
     except Exception as e:
-        print(f"❌ Error loading mission: {e}")
+        print(f"[ERROR] Error loading mission: {e}")
         return False
     
-    print(f"📋 Mission contains {len(actions)} steps\n")
+    print(f"[INFO] Mission contains {len(actions)} steps\n")
     
     for i, action in enumerate(actions, 1):
         tool_name = action.get("tool", "unknown")
@@ -114,21 +118,21 @@ def run_mission(filepath: str):
             sel_count = model.SelectionManager.GetSelectedObjectCount
             if callable(sel_count):
                 sel_count = sel_count()
-            print(f"         🔍 DEBUG: Selection count before execution = {sel_count}")
+            print(f"         [DEBUG] Selection count before execution = {sel_count}")
         
         try:
             result = execute_action(action)
-            print(f"         ✅ {result}\n")
+            print(f"         [OK] {result}\n")
         except Exception as e:
-            print(f"         ❌ FAILED: {e}\n")
+            print(f"         [FAILED] {e}\n")
             
             # ADD THIS TO SEE FULL ERROR:
             import traceback
             print("Full traceback:")
             traceback.print_exc()
             
-            print("⛔ Mission aborted due to error.")
+            print("[ABORT] Mission aborted due to error.")
             return False
     
-    print("🎉 Mission completed successfully!")
+    print("[SUCCESS] Mission completed successfully!")
     return True

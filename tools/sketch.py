@@ -113,6 +113,99 @@ def select_face_at_coordinate(x, y, z):
     
     return f"Selected face at ({x}, {y}, {z})"
 
+def select_edge_at_coordinate(x, y, z):
+    """
+    Selects an edge at a specific 3D coordinate (mm).
+    Uses SelectByRay for reliable edge selection.
+    
+    IMPORTANT: Call this BEFORE fillet() to select the edge(s) to fillet.
+    You can call this multiple times with append=True to select multiple edges.
+    
+    Args:
+        x, y, z: Coordinates near the edge to select (in mm)
+    """
+    model = _model()
+    nothing = get_nothing()
+    
+    x_m, y_m, z_m = x/1000.0, y/1000.0, z/1000.0
+    
+    # Try SelectByID2 first for edges
+    status = model.Extension.SelectByID2("", "EDGE", x_m, y_m, z_m, False, 0, nothing, 0)
+    
+    if not status:
+        # If failed, try SelectByRay with different directions
+        # Type = 1 for edges
+        ray_directions = [
+            (0, -1, 0),   # Down
+            (0, 1, 0),    # Up
+            (1, 0, 0),    # Right
+            (-1, 0, 0),   # Left
+            (0, 0, 1),    # Front
+            (0, 0, -1),   # Back
+        ]
+        
+        for dx, dy, dz in ray_directions:
+            # Offset the origin slightly in the opposite direction of the ray
+            ox = x_m - dx * 0.01
+            oy = y_m - dy * 0.01
+            oz = z_m - dz * 0.01
+            
+            status = model.Extension.SelectByRay(
+                ox, oy, oz,           # Origin
+                dx, dy, dz,           # Direction
+                0.001,                # Radius
+                1,                    # Type: 1 = edge
+                False,                # Append
+                0,                    # Mark
+                0                     # Option
+            )
+            if status:
+                break
+    
+    if not status:
+        raise Exception(f"No edge found at coordinates ({x}, {y}, {z})")
+    
+    return f"Selected edge at ({x}, {y}, {z})"
+
+def select_edge_at_coordinate_append(x, y, z):
+    """
+    Selects an additional edge at a specific 3D coordinate (mm).
+    Appends to current selection - use after select_edge_at_coordinate for multiple edges.
+    
+    Args:
+        x, y, z: Coordinates near the edge to select (in mm)
+    """
+    model = _model()
+    nothing = get_nothing()
+    
+    x_m, y_m, z_m = x/1000.0, y/1000.0, z/1000.0
+    
+    # Try SelectByID2 with append=True
+    status = model.Extension.SelectByID2("", "EDGE", x_m, y_m, z_m, True, 0, nothing, 0)
+    
+    if not status:
+        # Try SelectByRay with append
+        ray_directions = [
+            (0, -1, 0), (0, 1, 0), (1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1),
+        ]
+        
+        for dx, dy, dz in ray_directions:
+            ox = x_m - dx * 0.01
+            oy = y_m - dy * 0.01
+            oz = z_m - dz * 0.01
+            
+            status = model.Extension.SelectByRay(
+                ox, oy, oz, dx, dy, dz,
+                0.001, 1, True, 0, 0  # Append=True
+            )
+            if status:
+                break
+    
+    if not status:
+        raise Exception(f"No edge found at coordinates ({x}, {y}, {z})")
+    
+    return f"Appended edge at ({x}, {y}, {z}) to selection"
+
 def select_face_by_normal(direction="up"):
     """Intelligently selects a face based on its orientation."""
     model = _model()

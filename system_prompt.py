@@ -134,6 +134,19 @@ JSON
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": 400}}
 ]
+
+**Box with Filleted Edges (50x50x30mm box with 5mm fillet):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_rectangle", "args": {"width": 50, "height": 50}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 30}},
+    {"tool": "select_edge_at_coordinate", "args": {"x": 25, "y": 30, "z": 0}},
+    {"tool": "fillet", "args": {"radius": 5}}
+]
+```
 """
 
 AVAILABLE_TOOLS = """ -- PART --
@@ -149,6 +162,12 @@ create_sketch_on_selected_face()
 select_face_by_normal(direction: "up"|"down"|"front"|"back"|"left"|"right")
 
 select_face_at_coordinate(x, y, z) <- USE THIS FOR PRECISION!
+
+-- EDGE SELECTION (for fillet/chamfer) --
+
+select_edge_at_coordinate(x, y, z) <- Select edge BEFORE fillet!
+
+select_edge_at_coordinate_append(x, y, z) <- Add more edges to selection
 
 -- GEOMETRY (mm units) --
 
@@ -190,9 +209,9 @@ shell(thickness) <- Hollows body. PRE-SELECT face to remove first!
 
 loft() <- Smooth shape between 2+ selected sketch profiles
 
--- REFINEMENTS --
+-- REFINEMENTS (PRE-SELECT edges first!) --
 
-fillet(radius)
+fillet(radius) <- PRE-SELECT edge with select_edge_at_coordinate!
 
 chamfer(distance, angle)
 
