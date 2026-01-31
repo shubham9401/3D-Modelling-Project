@@ -228,6 +228,8 @@ draw_rectangle(width, height, x=0, y=0)
 
 draw_circle(radius, x=0, y=0)
 
+draw_ellipse(radius_x, radius_y, x=0, y=0) <- For elliptical shapes!
+
 draw_arc(radius, start_angle, end_angle)
 
 draw_semicircle(radius)
@@ -277,6 +279,16 @@ thread_tap(diameter, pitch, depth) <- INTERNAL thread for NUTS! Uses Metric Tap 
     Example: M6x1.0 nut thread = thread_tap(diameter=6, pitch=1.0, depth=5)
     
 Common metric thread sizes: M3x0.5, M4x0.7, M5x0.8, M6x1.0, M8x1.25, M10x1.5
+
+-- SHEET METAL --
+
+sheet_metal_base_flange(thickness, bend_radius, depth) <- Creates sheet metal from sketch!
+    Draw closed profile first, then call this tool.
+    Example: sheet_metal_base_flange(thickness=1, bend_radius=1, depth=20)
+    
+edge_flange(length, angle, gap_distance) <- Adds flange to sheet metal edge!
+    PRE-SELECT an edge of a sheet metal part first.
+    Example: edge_flange(length=20, angle=90)
 
 -- PATTERNS --
 

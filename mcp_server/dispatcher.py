@@ -64,6 +64,8 @@ TOOL_REGISTRY = {
     "chamfer": feature.chamfer,
     "thread": feature.thread,
     "thread_tap": feature.thread_tap,
+    "sheet_metal_base_flange": feature.sheet_metal_base_flange,
+    "edge_flange": feature.edge_flange,
     
     # Patterns
     "linear_pattern": feature.linear_pattern,

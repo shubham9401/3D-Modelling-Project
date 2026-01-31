@@ -341,6 +341,34 @@ def draw_circle(radius, x=0, y=0):
     _sm().CreateCircleByRadius(x_m, y_m, 0, r)
     return f"Circle radius {radius}mm drawn at ({x},{y})"
 
+def draw_ellipse(radius_x, radius_y, x=0, y=0):
+    """
+    Draws an ellipse at (x,y) with specified radii.
+    
+    Args:
+        radius_x: Semi-major axis (horizontal radius) in mm
+        radius_y: Semi-minor axis (vertical radius) in mm
+        x: Center X coordinate in mm (default 0)
+        y: Center Y coordinate in mm (default 0)
+    """
+    _require_sketch_active()
+    
+    # Convert to meters
+    rx = radius_x / 1000.0
+    ry = radius_y / 1000.0
+    x_m = x / 1000.0
+    y_m = y / 1000.0
+    
+    # CreateEllipse(CenterX, CenterY, CenterZ, MajorAxisX, MajorAxisY, MajorAxisZ, MinorAxisX, MinorAxisY, MinorAxisZ)
+    # Major axis point is on the ellipse boundary
+    # Minor axis point is on the ellipse boundary
+    _sm().CreateEllipse(
+        x_m, y_m, 0,           # Center point
+        x_m + rx, y_m, 0,      # Point on major axis (right edge)
+        x_m, y_m + ry, 0       # Point on minor axis (top edge)
+    )
+    return f"Ellipse {radius_x}x{radius_y}mm drawn at ({x},{y})"
+
 def draw_arc(radius, start_angle, end_angle):
     """Draws an arc centered at origin."""
     _require_sketch_active()
@@ -469,11 +497,6 @@ def draw_slot(length, width):
     sm.CreateLine(-half_len, r, 0, half_len, r, 0)
     sm.CreateLine(half_len, -r, 0, -half_len, -r, 0)
     return f"Slot {length}x{width}mm drawn"
-
-def draw_ellipse(major_radius, minor_radius):
-    _require_sketch_active()
-    _sm().CreateEllipse(0, 0, 0, major_radius/1000.0, 0, 0, 0, minor_radius/1000.0, 0)
-    return "Ellipse drawn"
 
 def validate_closed_profile():
     """Confirms sketch is active and ready for features."""

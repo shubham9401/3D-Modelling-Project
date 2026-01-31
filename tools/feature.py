@@ -820,3 +820,265 @@ def thread_tap(diameter=6, pitch=1.0, depth=10, size=None, right_handed=True):
     model.ClearSelection2(True)
     
     raise Exception(f"Tap thread creation failed for {size}. Make sure you selected the circular edge of a hole.")
+
+def sheet_metal_base_flange(thickness=1, bend_radius=1, depth=20, reverse_direction=False, k_factor=0.5):
+    """
+    Creates a sheet metal base flange from the active sketch profile.
+    
+    IMPORTANT: Draw a closed profile sketch first, then call this function.
+    The sketch should be on a plane (Front/Top/Right).
+    
+    Args:
+        thickness: Sheet metal thickness in mm (default 1)
+        bend_radius: Default bend radius in mm (default 1)
+        depth: Extrusion depth in mm (default 20)
+        reverse_direction: Reverse extrusion direction (default False)
+        k_factor: K-factor for bend allowance (default 0.5)
+    """
+    _require_part()
+    model = _model()
+    fm = _fm()
+    
+    # Convert to meters
+    t = thickness / 1000.0
+    r = bend_radius / 1000.0
+    d = depth / 1000.0
+    
+    print(f"    DEBUG: Creating sheet metal base flange: thickness={thickness}mm, bend_radius={bend_radius}mm, depth={depth}mm")
+    
+    # Get feature count before
+    feat_count_before = fm.GetFeatureCount(True)
+    
+    # swFmBaseFlange = 34 (found from scanning)
+    base_flange_id = 34
+    
+    try:
+        print(f"    DEBUG: Creating BaseFlange definition (ID={base_flange_id})...")
+        swFeatData = fm.CreateDefinition(base_flange_id)
+        
+        if swFeatData is None:
+            # Scan for the correct ID
+            print("    DEBUG: CreateDefinition(34) returned None, scanning...")
+            for type_id in range(0, 300):
+                try:
+                    swFeatData = fm.CreateDefinition(type_id)
+                    if swFeatData is not None:
+                        try:
+                            _ = swFeatData.Thickness
+                            _ = swFeatData.BendRadius
+                            base_flange_id = type_id
+                            print(f"    DEBUG: Found BaseFlange at ID {type_id}")
+                            break
+                        except:
+                            swFeatData = None
+                except:
+                    pass
+        
+        if swFeatData is None:
+            raise Exception("Could not find BaseFlange feature type")
+        
+        print(f"    DEBUG: Setting sheet metal properties...")
+        
+        # Set properties directly - skip Initialize/CustomBendAllowance
+        try:
+            swFeatData.BendRadius = r
+        except Exception as e:
+            print(f"    DEBUG: Setting BendRadius failed: {e}")
+            
+        try:
+            swFeatData.D1EndConditionDistance = d
+        except Exception as e:
+            print(f"    DEBUG: Setting D1EndConditionDistance failed: {e}")
+            
+        try:
+            swFeatData.D1EndConditionType = 1  # Blind
+        except:
+            pass
+            
+        try:
+            swFeatData.D1ReverseOffset = False
+        except:
+            pass
+            
+        try:
+            swFeatData.D2EndConditionDistance = d
+        except:
+            pass
+            
+        try:
+            swFeatData.D2EndConditionType = 1  # Blind
+        except:
+            pass
+            
+        try:
+            swFeatData.D2ReverseOffset = False
+        except:
+            pass
+            
+        try:
+            swFeatData.OffsetDirections = 1
+        except:
+            pass
+            
+        try:
+            swFeatData.ReverseDirection = reverse_direction
+        except:
+            pass
+            
+        try:
+            swFeatData.ReverseThickness = False
+        except:
+            pass
+            
+        try:
+            swFeatData.Thickness = t
+        except Exception as e:
+            print(f"    DEBUG: Setting Thickness failed: {e}")
+        
+        print("    DEBUG: Creating sheet metal feature...")
+        result = fm.CreateFeature(swFeatData)
+        print(f"    DEBUG: CreateFeature returned: {result}")
+        
+        feat_count_after = fm.GetFeatureCount(True)
+        print(f"    DEBUG: Feature count before={feat_count_before}, after={feat_count_after}")
+        
+        if feat_count_after > feat_count_before:
+            try:
+                model.ForceRebuild3(True)
+            except:
+                pass
+            return f"Sheet metal base flange created: {thickness}mm thick, {depth}mm deep"
+            
+    except Exception as e:
+        print(f"    DEBUG: Sheet metal creation exception: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    raise Exception(f"Sheet metal base flange creation failed. Make sure you have an active sketch with a closed profile.")
+
+def edge_flange(length=20, angle=90, gap_distance=0):
+    """
+    Creates a sheet metal edge flange on the selected edge.
+    
+    IMPORTANT: Pre-select an edge of an existing sheet metal part first!
+    Use select_edge_at_coordinate() to select the edge.
+    
+    Args:
+        length: Flange length in mm (default 20)
+        angle: Flange angle in degrees (default 90)
+        gap_distance: Gap between flanges in mm (default 0)
+    """
+    _require_part()
+    model = _model()
+    fm = _fm()
+    
+    # Convert to meters and radians
+    l = length / 1000.0
+    a = math.radians(angle)
+    g = gap_distance / 1000.0
+    
+    print(f"    DEBUG: Creating edge flange: length={length}mm, angle={angle}deg")
+    
+    # Check edge is selected
+    selMgr = model.SelectionManager
+    sel_count = selMgr.GetSelectedObjectCount2(-1)
+    if sel_count == 0:
+        raise Exception("No edge selected for edge flange! Select an edge first.")
+    
+    # Get feature count before
+    feat_count_before = fm.GetFeatureCount(True)
+    
+    # Find the EdgeFlange feature type ID
+    edge_flange_id = None
+    
+    for type_id in range(0, 300):
+        try:
+            swFeatData = fm.CreateDefinition(type_id)
+            if swFeatData is not None:
+                try:
+                    # Check for edge flange specific properties
+                    _ = swFeatData.FlangeLength
+                    _ = swFeatData.Angle
+                    edge_flange_id = type_id
+                    print(f"    DEBUG: Found EdgeFlange type at ID {type_id}")
+                    break
+                except:
+                    pass
+        except:
+            pass
+    
+    if edge_flange_id is None:
+        # Try alternative: InsertSheetMetalEdgeFlange
+        print("    DEBUG: EdgeFlange type not found, trying InsertSheetMetalEdgeFlange...")
+        try:
+            result = fm.InsertSheetMetalEdgeFlange2(
+                l,      # Length
+                a,      # Angle
+                0,      # Offset distance
+                False,  # Use relief
+                False,  # Use gap
+                g,      # Gap distance
+                0,      # Relief ratio
+                0,      # Relief depth
+                0,      # Relief width
+                1,      # Flange position
+                False   # Reverse direction
+            )
+            
+            feat_count_after = fm.GetFeatureCount(True)
+            if feat_count_after > feat_count_before:
+                try:
+                    model.ForceRebuild3(True)
+                except:
+                    pass
+                return f"Edge flange created: {length}mm long at {angle}deg"
+                
+        except Exception as e:
+            print(f"    DEBUG: InsertSheetMetalEdgeFlange2 failed: {e}")
+    
+    try:
+        print(f"    DEBUG: Creating EdgeFlange definition (ID={edge_flange_id})...")
+        swFeatData = fm.CreateDefinition(edge_flange_id)
+        
+        if swFeatData is not None:
+            # Set properties
+            try:
+                swFeatData.FlangeLength = l
+            except:
+                pass
+            try:
+                swFeatData.Angle = a
+            except:
+                pass
+            try:
+                swFeatData.GapDistance = g
+            except:
+                pass
+            try:
+                swFeatData.ReverseDirection = False
+            except:
+                pass
+            
+            print("    DEBUG: Creating edge flange feature...")
+            result = fm.CreateFeature(swFeatData)
+            print(f"    DEBUG: CreateFeature returned: {result}")
+            
+            feat_count_after = fm.GetFeatureCount(True)
+            print(f"    DEBUG: Feature count before={feat_count_before}, after={feat_count_after}")
+            
+            if feat_count_after > feat_count_before:
+                try:
+                    model.ForceRebuild3(True)
+                except:
+                    pass
+                return f"Edge flange created: {length}mm long at {angle}deg"
+                
+    except Exception as e:
+        print(f"    DEBUG: Edge flange creation exception: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Clear selection
+    model.ClearSelection2(True)
+    
+    raise Exception(f"Edge flange creation failed. Make sure you selected an edge of a sheet metal part.")
