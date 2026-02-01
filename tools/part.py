@@ -68,6 +68,11 @@ def save_part(path):
         path = path + '.sldprt'
     success = model.SaveAs3(path, 0, 0)
     if not success:
+        # Fallback to older SaveAs
+        print(f"    DEBUG: SaveAs3 failed, trying SaveAs for {path}")
+        success = model.SaveAs(path)
+        
+    if not success:
         raise Exception("Failed to save part")
     return f"Part saved at {path}"
 

@@ -21,7 +21,7 @@ def get_agent_response(user_request):
 
     try:
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile", # High-intelligence model
+            model=os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"), # Configurable model
             messages=[
                 {"role": "system", "content": full_system_message},
                 {"role": "user", "content": user_request}

@@ -14,9 +14,9 @@ Design:
 """
 
 try:
-    from .solidworks_app import get_sw_app, get_active_model
+    from .solidworks_app import get_sw_app, get_active_model, create_new_assembly
 except ImportError:
-    from solidworks_app import get_sw_app, get_active_model
+    from solidworks_app import get_sw_app, get_active_model, create_new_assembly
 
 # ============================================================
 # INTERNAL STATE
@@ -67,7 +67,7 @@ def _add_mate(mate_type, value=0):
 
 def create_assembly():
     global _ASSEMBLY_ACTIVE
-    model = _sw().NewDocument("", 2, 0, 0)
+    model = create_new_assembly()
     if model is None:
         raise Exception("Failed to create assembly")
     _ASSEMBLY_ACTIVE = True
