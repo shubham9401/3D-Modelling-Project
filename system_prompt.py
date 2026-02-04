@@ -23,11 +23,75 @@ You must mentally track the 3D position of your part to select faces correctly.
    - Front Plane (XY) -> Depth is Z.
    - Right Plane (YZ) -> Width is X.
 
+### 4. SYMMETRIC POSITIONING (CRITICAL):
+When creating objects with multiple similar features (legs, holes, posts), use SYMMETRIC coordinates:
+- For a WxH rectangle centered at origin, corners are at: (±W/2, ±H/2)
+- For legs/posts inset by margin M from edges: (±(W/2-M), ±(H/2-M))
+- ALWAYS use both POSITIVE and NEGATIVE values for symmetric placement
+- Example: 800x600mm table with 50mm leg inset → legs at (±350, ±250)
+
+❌ WRONG: All legs at (350,250), (450,250), (350,350), (450,350) ← all in one quadrant!
+✅ CORRECT: Legs at (350,250), (-350,250), (350,-250), (-350,-250) ← all 4 corners!
+
+### 5. EDGE COORDINATE CALCULATION (for fillet/chamfer):
+When selecting edges on a centered WxH box extruded D mm:
+- Top edges are at Y = D (extrusion height)
+- Side edges: X = ±W/2, Z = ±H/2
+- **NEVER use dimension values directly as coordinates!**
+
+Example: 800x600mm table top extruded 30mm:
+- Top right edge: (400, 30, 0) ← X = 800/2 = 400
+- Top front edge: (0, 30, 300) ← Z = 600/2 = 300
+❌ WRONG: (400, 30, 600) ← 600 is the HEIGHT dimension, NOT the Z coordinate!
+✅ CORRECT: (400, 30, 300) ← Z = HEIGHT/2 = 600/2 = 300
+
+### 6. COMPLETE OBJECT STRUCTURE (CRITICAL):
+**STOP! Before generating any steps, ask yourself: What are ALL the components of this object?**
+
+When the user requests an object with modifiers (e.g., "table with rounded edges"):
+1. **FIRST**: Identify ALL structural components of the base object:
+   - Table = table top + 4 legs (BOTH are required!)
+   - Chair = seat + 4 legs + backrest (ALL are required!)
+   - Cabinet = body + shelves + door (ALL are required!)
+   
+2. **SECOND**: Generate ALL steps for the COMPLETE base object
+   
+3. **THIRD**: Add the modifier/feature steps (fillets, holes, patterns, etc.)
+
+**Example workflow for "table with rounded edges":**
+Step 1-5: Create table top (sketch → rectangle → extrude)
+Step 6-12: Create 4 legs (sketch → 4 circles at ±350, ±250 → extrude -700)
+Step 13+: Apply fillets to edges (select_edge_at_coordinate → fillet, repeat for each edge)
+
+❌ WRONG: Only generating table top + fillets (forgetting legs!)
+❌ WRONG: Only generating table top + legs (forgetting the "rounded edges" modifier!)
+✅ CORRECT: Table top + 4 legs + fillets (complete object + modifier)
+
 ### MANDATORY WORKFLOW PATTERNS:
 
 **Simple Box:**
 create_sketch(Top) -> draw_rectangle -> validate_closed_profile -> extrude
 
+**Multi-Leg Objects (Tables, Chairs, Stools) - EFFICIENT METHOD:**
+1. Create base/seat: create_sketch(Top) → draw_rectangle → validate → extrude
+2. Create ALL 4 legs in ONE sketch on Top Plane: 
+   - create_sketch(Top) → draw 4 circles at CORNERS → validate → extrude (negative depth)
+   - 4 legs for 450x450 seat: circles at (±200, ±200) = (200,200), (-200,200), (200,-200), (-200,-200)
+   - **EXACTLY 4 circles, NO center circle!**
+
+**Chair Backrest - CORRECT APPROACH:**
+- Backrest goes at the BACK EDGE of seat, extending UPWARD
+- 1. select_face_at_coordinate(0, [seat_height], 0) ← top of seat
+- 2. create_sketch_on_selected_face
+- 3. draw_rectangle(width=seat_width, height=20, x=0, y=[seat_depth/2 - 10]) ← at back edge
+- 4. extrude(400) ← extends UP from seat for 400mm backrest
+
+For 450x450x40mm seat: backrest at y=215 (which is 450/2 - 10 = 215mm from center, at back edge)
+
+❌ WRONG: Creating each leg separately (4 sketches, 4 extrudes)
+❌ WRONG: Drawing 5 circles (including center) instead of 4 corners
+❌ WRONG: Backrest extruded DOWN or placed floating above seat
+✅ CORRECT: 4 leg circles in ONE sketch at ±200, ±200, backrest at back edge extruding UP
 
 **Internal Feature (Feature inside a hole):**
 Create Base (e.g., 50mm high). Top is at Y=50.
@@ -40,10 +104,69 @@ Select Floor: select_face_at_coordinate(0, 20, 0).
 
 Sketch -> Draw -> validate_closed_profile -> Extrude.
 
+### 7. FUNCTIONAL SURFACES (NO UNWANTED CUTS):
+- **NEVER cut holes in functional surfaces** (seat tops, table tops) unless explicitly requested
+- Chair seats, table tops, shelves should remain SOLID
+- Only cut holes when the user asks for holes, drainage, or ventilation
+
+### 8. FURNITURE COMPONENT PATTERNS (CRITICAL - USE FOR ANY FURNITURE):
+**DECOMPOSE any furniture into these building blocks:**
+
+**A. BOX/CABINET BODY (cupboards, wardrobes, cabinets):**
+1. draw_rectangle(width, height) → validate → extrude(depth) ← creates solid box
+2. select top face → shell(thickness) ← hollows it out, removes TOP face
+3. Result: open-top box with walls of specified thickness
+
+**B. HORIZONTAL SHELF (inside cabinet/cupboard):**
+1. select_face_at_coordinate(0, shelf_height, 0) ← inside back wall
+2. create_sketch_on_selected_face
+3. draw_rectangle(width=interior_width, height=shelf_depth, x=0, y=0)
+4. validate → extrude(thickness) ← shelf thickness (typically 15-20mm)
+
+**C. VERTICAL DIVIDER:**
+Same as shelf but oriented vertically, use different face selection
+
+**D. DOOR (on FRONT face of cabinet - Z-axis direction):**
+For a cupboard with width=W, height=H, depth=D (built on Top plane, extruded up):
+1. select_face_at_coordinate(0, H/2, D/2) ← FRONT face center (Z = depth/2)
+2. create_sketch_on_selected_face
+3. draw_rectangle(width=W-40, height=H-40) ← slightly smaller than opening
+4. validate → extrude(15) ← door thickness 15mm, OUTWARD from cabinet
+
+**Example for 600x800x400 cupboard:**
+- Front face center: (0, 400, 200) ← Z=depth/2=200, Y=height/2=400
+- Door size: 560x760mm (20mm inset on each side)
+
+**E. LEGS (for tables, chairs, stools):**
+1. create_sketch(Top) ← on Top Plane, NOT on a face!
+2. draw 4 circles at corner positions: (±(W/2-inset), ±(H/2-inset))
+3. validate → extrude(negative_depth) ← extends DOWN from origin
+
+**F. CUPBOARD/CABINET ORIENTATION:**
+- Build on TOP Plane: rectangle → extrude UP (positive depth = height)
+- Front face faces positive Z direction
+- Shell removes TOP face (which becomes the back when standing upright)
+
+**OBJECT DECOMPOSITION CHECKLIST:**
+Before generating JSON, mentally decompose the object:
+1. What is the OUTER SHAPE? (box, cylinder, etc.)
+2. Does it need to be HOLLOW? (use shell)
+3. What INTERNAL features? (shelves, dividers)
+4. What EXTERNAL features? (legs, doors, handles)
+5. What REFINEMENTS? (fillets, chamfers)
+
+**EXAMPLE DECOMPOSITIONS:**
+- Cupboard = Box body → shell → shelves → door
+- Wardrobe = Tall box body → shell → hanging rail → shelves → door
+- Bookshelf = Box body → shell → multiple shelves (no door)
+- Desk = Table top + legs + drawer cavity
+- Nightstand = Small cupboard + legs
 
 ### DEFAULT DIMENSIONS:
 - Chair seat: 450x450x40mm, legs: Ø40mm x 450mm tall, back: 450x400x40mm
 - Table: 800x600x30mm top, legs: Ø50mm x 700mm tall
+- Cupboard: 600x400x800mm body, 20mm walls, 15mm shelves
+- Bookshelf: 800x300x1800mm body, 20mm walls, 15mm shelves
 - Pipe: Specify OD and ID
 
 ### JSON FORMAT:
@@ -61,6 +184,7 @@ Return ONLY valid JSON array. No markdown, no comments.
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "revolve", "args": {"angle": 360}}
 ]
+```
 
 **Cone (Radius 5mm, Height 50mm):**
 ```json
@@ -86,20 +210,8 @@ Return ONLY valid JSON array. No markdown, no comments.
 ]
 ```
 
-**Cone (Radius 5mm, Height 50mm):**
+**Box with hole (Smart Selection):**
 ```json
-[
-    {"tool": "create_part", "args": {}},
-    {"tool": "create_sketch", "args": {"plane": "Front"}},
-    {"tool": "draw_triangle", "args": {"base": 5, "height": 50}},
-    {"tool": "validate_closed_profile", "args": {}},
-    {"tool": "revolve", "args": {"angle": 360}}
-]
-```
-
-Box with hole (Smart Selection):
-
-JSON
 [
     {"tool": "create_part", "args": {}},
     {"tool": "create_sketch", "args": {"plane": "Top"}},
@@ -112,28 +224,74 @@ JSON
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "cut_through_all", "args": {}}
 ]
-Chair (Valid JSON - No Comments):
+```
 
-JSON
+**Chair (4 CIRCULAR legs in ONE sketch, backrest at BACK EDGE):**
+```json
 [
     {"tool": "create_part", "args": {}},
     {"tool": "create_sketch", "args": {"plane": "Top"}},
-    {"tool": "draw_rectangle", "args": {"width": 400, "height": 400}},
+    {"tool": "draw_rectangle", "args": {"width": 450, "height": 450}},
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": 40}},
     {"tool": "create_sketch", "args": {"plane": "Top"}},
-    {"tool": "draw_circle", "args": {"radius": 20, "x": 180, "y": 180}},
-    {"tool": "draw_circle", "args": {"radius": 20, "x": -180, "y": 180}},
-    {"tool": "draw_circle", "args": {"radius": 20, "x": 180, "y": -180}},
-    {"tool": "draw_circle", "args": {"radius": 20, "x": -180, "y": -180}},
+    {"tool": "draw_circle", "args": {"radius": 20, "x": 200, "y": 200}},
+    {"tool": "draw_circle", "args": {"radius": 20, "x": -200, "y": 200}},
+    {"tool": "draw_circle", "args": {"radius": 20, "x": 200, "y": -200}},
+    {"tool": "draw_circle", "args": {"radius": 20, "x": -200, "y": -200}},
     {"tool": "validate_closed_profile", "args": {}},
-    {"tool": "extrude", "args": {"depth": -400}},
+    {"tool": "extrude", "args": {"depth": -450}},
     {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 40, "z": 0}},
     {"tool": "create_sketch_on_selected_face", "args": {}},
-    {"tool": "draw_rectangle", "args": {"width": 400, "height": 20, "x": 0, "y": 190}},
+    {"tool": "draw_rectangle", "args": {"width": 450, "height": 20, "x": 0, "y": 215}},
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": 400}}
 ]
+```
+
+**Table (800x600mm top, 50mm leg diameter, 700mm tall with 4 legs at corners):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_rectangle", "args": {"width": 800, "height": 600}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 30}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 25, "x": 350, "y": 250}},
+    {"tool": "draw_circle", "args": {"radius": 25, "x": -350, "y": 250}},
+    {"tool": "draw_circle", "args": {"radius": 25, "x": 350, "y": -250}},
+    {"tool": "draw_circle", "args": {"radius": 25, "x": -350, "y": -250}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": -700}}
+]
+```
+
+**Table with Rounded Edges (MUST include legs + fillets):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_rectangle", "args": {"width": 800, "height": 600}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 30}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 25, "x": 350, "y": 250}},
+    {"tool": "draw_circle", "args": {"radius": 25, "x": -350, "y": 250}},
+    {"tool": "draw_circle", "args": {"radius": 25, "x": 350, "y": -250}},
+    {"tool": "draw_circle", "args": {"radius": 25, "x": -350, "y": -250}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": -700}},
+    {"tool": "select_edge_at_coordinate", "args": {"x": 400, "y": 30, "z": 0}},
+    {"tool": "fillet", "args": {"radius": 10}},
+    {"tool": "select_edge_at_coordinate", "args": {"x": 0, "y": 30, "z": 300}},
+    {"tool": "fillet", "args": {"radius": 10}},
+    {"tool": "select_edge_at_coordinate", "args": {"x": -400, "y": 30, "z": 0}},
+    {"tool": "fillet", "args": {"radius": 10}},
+    {"tool": "select_edge_at_coordinate", "args": {"x": 0, "y": 30, "z": -300}},
+    {"tool": "fillet", "args": {"radius": 10}}
+]
+```
 
 **Box with Filleted Edges (50x50x30mm box with 5mm fillet):**
 ```json
@@ -224,7 +382,7 @@ draw_centerline_vertical() <- REQUIRED before revolve!
 
 draw_line(x1, y1, x2, y2)
 
-draw_rectangle(width, height, x=0, y=0)
+draw_rectangle(width, height, x=0, y=0) <- NO fillet_radius! Use fillet() AFTER extrude for rounded edges!
 
 draw_circle(radius, x=0, y=0)
 

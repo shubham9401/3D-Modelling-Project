@@ -46,8 +46,18 @@ def clean_and_validate_json(raw_text):
         # Remove markdown backticks if present
         clean_text = raw_text.replace("```json", "").replace("```", "").strip()
         
+        # Find the JSON array - look for first '[' and last ']'
+        start_idx = clean_text.find('[')
+        end_idx = clean_text.rfind(']')
+        
+        if start_idx == -1 or end_idx == -1:
+            raise ValueError("No JSON array found in response")
+        
+        # Extract only the JSON part
+        json_text = clean_text[start_idx:end_idx + 1]
+        
         # Parse JSON
-        data = json.loads(clean_text)
+        data = json.loads(json_text)
         
         # Basic check: It must be a list of actions
         if not isinstance(data, list):
