@@ -60,6 +60,8 @@ TOOL_REGISTRY = {
     "revolve_simple": feature.revolve_simple,
     "shell": feature.shell,
     "loft": feature.loft,
+    "create_reference_plane": feature.create_reference_plane,
+    "select_sketch": feature.select_sketch,
     "fillet": feature.fillet,
     "chamfer": feature.chamfer,
     "thread": feature.thread,

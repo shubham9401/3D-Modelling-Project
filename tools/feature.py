@@ -304,23 +304,107 @@ def loft():
     """
     Loft feature - creates smooth transition between selected profiles.
     Requires: Two or more sketches selected before calling.
+    Use select_sketch() to select the sketches first.
     """
     _require_part()
+    fm = _fm()
     
-    _fm().InsertProtrusionBlend(
-        False,  # Closed
-        True,   # KeepTangency  
-        False,  # ForceNonRational
-        1.0,    # TightnessFactor
-        0,      # StartTangentType
-        0,      # EndTangentType
-        False,  # IsThinBody
-        0, 0,   # Thickness1, 2
-        0,      # ThicknessType
-        True,   # UseFeatScope
-        False   # PropagateFeatureToParts
+    # InsertProtrusionBlend parameters from VBA:
+    # InsertProtrusionBlend(bClosed, bKeepTangency, bForceNonRational, dTightnessFactor, 
+    #                       nStartTangentType, nEndTangentType, dStartTangentLength, dEndTangentLength,
+    #                       bStartMatchingFaces, bEndMatchingFaces, bIsThinBody, 
+    #                       dThickness1, dThickness2, nThicknessType, bUseFeatScope, 
+    #                       bUseAutoSelect, bPropagateFeatureToParts)
+    result = fm.InsertProtrusionBlend(
+        False,  # bClosed
+        True,   # bKeepTangency  
+        False,  # bForceNonRational
+        1,      # dTightnessFactor
+        0,      # nStartTangentType
+        0,      # nEndTangentType
+        1,      # dStartTangentLength
+        1,      # dEndTangentLength
+        True,   # bStartMatchingFaces
+        True,   # bEndMatchingFaces
+        False,  # bIsThinBody
+        0,      # dThickness1
+        0,      # dThickness2
+        0,      # nThicknessType
+        True,   # bUseFeatScope
+        True,   # bUseAutoSelect
+        True    # bPropagateFeatureToParts
     )
-    return "Loft created between profiles"
+    
+    if result:
+        return "Loft created between profiles"
+    else:
+        raise Exception("Loft creation failed. Make sure you have selected at least 2 sketches.")
+
+def create_reference_plane(offset, plane="Front"):
+    """
+    Creates a reference plane at an offset distance from an existing plane.
+    
+    Args:
+        offset: Distance in mm from the reference plane
+        plane: Base plane name - "Front", "Top", or "Right"
+    
+    Returns:
+        Success message with the new plane name
+    """
+    _require_part()
+    model = _model()
+    fm = _fm()
+    
+    # Map plane names to SolidWorks plane names
+    plane_map = {
+        "Front": "Front Plane",
+        "Top": "Top Plane",
+        "Right": "Right Plane"
+    }
+    
+    plane_name = plane_map.get(plane, f"{plane} Plane")
+    
+    # Select the base plane
+    nothing = get_nothing()
+    model.Extension.SelectByID2(plane_name, "PLANE", 0, 0, 0, False, 0, nothing, 0)
+    
+    # Convert offset to meters
+    offset_m = offset / 1000.0
+    
+    # InsertRefPlane(FirstConstraint, FirstValue, SecondConstraint, SecondValue, ThirdConstraint, ThirdValue)
+    # Constraint 8 = swRefPlaneReferenceConstraint_Parallel with offset
+    # Value is the offset distance in meters
+    ref_plane = fm.InsertRefPlane(8, offset_m, 0, 0, 0, 0)
+    
+    model.ClearSelection2(True)
+    
+    if ref_plane:
+        return f"Reference plane created at {offset}mm offset from {plane}"
+    else:
+        raise Exception(f"Failed to create reference plane at {offset}mm from {plane}")
+
+def select_sketch(sketch_name, mark=0, append=False):
+    """
+    Selects a sketch by name for use in loft or other operations.
+    
+    Args:
+        sketch_name: Name of the sketch (e.g., "Sketch1", "Sketch2")
+        mark: Selection mark (1 for loft profiles, 4 for guide curves)
+        append: Whether to append to existing selection (True) or replace (False)
+    
+    Returns:
+        Success message
+    """
+    _require_part()
+    model = _model()
+    nothing = get_nothing()
+    
+    result = model.Extension.SelectByID2(sketch_name, "SKETCH", 0, 0, 0, append, mark, nothing, 0)
+    
+    if result:
+        return f"Selected {sketch_name}"
+    else:
+        raise Exception(f"Failed to select {sketch_name}")
 
 # ============================================================
 # REFINEMENTS

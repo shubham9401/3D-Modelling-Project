@@ -419,6 +419,19 @@ revolve_simple(angle=360) <- Use if profile/axis already selected
 shell(thickness) <- Hollows body. PRE-SELECT face to remove first!
 
 loft() <- Smooth shape between 2+ selected sketch profiles
+    Workflow: 
+    1. Create sketch on first plane, draw profile, exit_sketch
+    2. create_reference_plane(offset, plane) - creates offset plane
+    3. Create sketch on new plane (Plane1), draw profile, exit_sketch
+    4. select_sketch("Sketch1", mark=1, append=False)
+    5. select_sketch("Sketch2", mark=1, append=True)
+    6. loft()
+
+create_reference_plane(offset, plane) <- Creates offset plane for loft!
+    Example: create_reference_plane(offset=40, plane="Front")
+
+select_sketch(sketch_name, mark, append) <- Selects sketch for loft!
+    Use mark=1 for loft profiles, append=True for second sketch
 
 -- REFINEMENTS (PRE-SELECT edges first!) --
 

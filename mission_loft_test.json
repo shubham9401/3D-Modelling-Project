@@ -1,0 +1,74 @@
+[
+    {
+        "tool": "create_part",
+        "args": {}
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Front"
+        }
+    },
+    {
+        "tool": "draw_rectangle",
+        "args": {
+            "width": 100,
+            "height": 100
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "exit_sketch",
+        "args": {}
+    },
+    {
+        "tool": "create_reference_plane",
+        "args": {
+            "offset": 40,
+            "plane": "Front"
+        }
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Plane1"
+        }
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 30
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "exit_sketch",
+        "args": {}
+    },
+    {
+        "tool": "select_sketch",
+        "args": {
+            "sketch_name": "Sketch1",
+            "mark": 1,
+            "append": false
+        }
+    },
+    {
+        "tool": "select_sketch",
+        "args": {
+            "sketch_name": "Sketch2",
+            "mark": 1,
+            "append": true
+        }
+    },
+    {
+        "tool": "loft",
+        "args": {}
+    }
+]

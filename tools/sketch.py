@@ -45,7 +45,12 @@ def _active_sketch():
         return None
     
 def create_sketch(plane: str):
-    """Starts a new sketch on the specified plane."""
+    """
+    Starts a new sketch on the specified plane.
+    
+    Args:
+        plane: "Front", "Top", "Right", or reference plane name like "Plane1"
+    """
     global _SKETCH_ACTIVE
 
     if _active_sketch() is None:
@@ -54,23 +59,32 @@ def create_sketch(plane: str):
     if _SKETCH_ACTIVE:
         raise Exception("Sketch already active. Exit current sketch first.")
 
-    if plane not in PLANE_MAP:
-        raise Exception(f"Invalid plane: {plane}. Must be Front, Top, or Right.")
-
     model = _model()
     nothing = get_nothing()
     
-    model.Extension.SelectByID2(
-        PLANE_MAP[plane],
-        "PLANE",
+    # Check if it's a standard plane or reference plane
+    if plane in PLANE_MAP:
+        plane_name = PLANE_MAP[plane]
+        plane_type = "PLANE"
+    else:
+        # Assume it's a reference plane (Plane1, Plane2, etc.)
+        plane_name = plane
+        plane_type = "PLANE"
+    
+    result = model.Extension.SelectByID2(
+        plane_name,
+        plane_type,
         0, 0, 0,
         False, 0,
         nothing, 0
     )
+    
+    if not result:
+        raise Exception(f"Failed to select plane: {plane}")
 
     model.InsertSketch2(True)
     _SKETCH_ACTIVE = True
-    return f"Sketch created on {plane} Plane"
+    return f"Sketch created on {plane}"
 
 def select_face_at_coordinate(x, y, z):
     """
