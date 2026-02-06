@@ -10,7 +10,7 @@
         }
     },
     {
-        "tool": "draw_rectangle",
+        "tool": "draw_circle",
         "args": {
             "width": 100,
             "height": 150

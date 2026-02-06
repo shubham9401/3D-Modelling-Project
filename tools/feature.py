@@ -645,10 +645,87 @@ def linear_pattern(count, spacing):
     return f"Linear pattern: {count} x {spacing}mm"
 
 def circular_pattern(count, angle=360):
-    """Circular pattern."""
+    """
+    Circular pattern - patterns the LAST feature around the origin axis.
+    
+    Args:
+        count: Number of instances (including original)
+        angle: Total angle span in degrees (default 360 for full circle)
+    """
     _require_part()
-    _fm().FeatureCircularPattern3(count, math.radians(angle), False, "", False, True)
-    return f"Circular pattern: {count} over {angle}°"
+    model = _model()
+    fm = _fm()
+    nothing = get_nothing()
+    
+    # Traverse features using FirstFeature/GetNextFeature (more reliable)
+    print(f"    DEBUG: Looking for last extrude feature...")
+    
+    last_feature = None
+    last_feature_name = None
+    
+    feat = model.FirstFeature()
+    while feat is not None:
+        try:
+            feat_type = feat.GetTypeName2()
+            feat_name = feat.Name
+            # Check if it's an extrude-type feature
+            if "Extrusion" in feat_type or "Boss" in feat_type or "extrude" in feat_type.lower():
+                last_feature = feat
+                last_feature_name = feat_name
+                print(f"    DEBUG: Found extrude: '{feat_name}' (type: {feat_type})")
+        except:
+            pass
+        feat = feat.GetNextFeature()
+    
+    if last_feature is None:
+        # If no extrusion found, try to get feature by common name patterns
+        for name in ["Boss-Extrude2", "Boss-Extrude1", "Extrude2", "Extrude1"]:
+            try:
+                result = model.Extension.SelectByID2(name, "BODYFEATURE", 0, 0, 0, False, 4, nothing, 0)
+                if result:
+                    last_feature_name = name
+                    print(f"    DEBUG: Found by name: '{name}'")
+                    break
+            except:
+                pass
+    
+    if last_feature_name is None:
+        raise Exception("No extrude/cut feature found to pattern!")
+    
+    print(f"    DEBUG: Selecting feature '{last_feature_name}' for circular pattern...")
+    
+    # Select the feature
+    model.ClearSelection2(True)
+    result = model.Extension.SelectByID2(last_feature_name, "BODYFEATURE", 0, 0, 0, False, 4, nothing, 0)
+    
+    if not result:
+        print(f"    DEBUG: BODYFEATURE selection failed, trying SOLIDBODY...")
+        result = model.Extension.SelectByID2(last_feature_name, "SOLIDBODY", 0, 0, 0, False, 4, nothing, 0)
+    
+    # Select the Y-axis (vertical) for circular pattern axis
+    # Mark = 1 for axis
+    axis_result = model.Extension.SelectByID2("Y Axis", "AXIS", 0, 0, 0, True, 1, nothing, 0)
+    if not axis_result:
+        print(f"    DEBUG: Y Axis selection failed, trying alternatives...")
+        # Try other axis names
+        model.Extension.SelectByID2("Axis1", "AXIS", 0, 0, 0, True, 1, nothing, 0)
+    
+    # Execute circular pattern
+    try:
+        print(f"    DEBUG: Executing FeatureCircularPattern4...")
+        fm.FeatureCircularPattern4(
+            count,              # Number of instances
+            math.radians(angle), # Angle (radians)
+            False,              # Flip direction
+            "",                 # Seed component config
+            False,              # Same spacing
+            True                # Geometry pattern
+        )
+    except Exception as e:
+        print(f"    DEBUG: FeatureCircularPattern4 failed: {e}, trying FeatureCircularPattern3...")
+        fm.FeatureCircularPattern3(count, math.radians(angle), False, "", False, True)
+    
+    return f"Circular pattern: {count} instances over {angle}°"
 
 def mirror_feature():
     """Mirror feature."""
