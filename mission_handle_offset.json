@@ -4,15 +4,24 @@
         "args": {}
     },
     {
+        "tool": "create_reference_plane",
+        "args": {
+            "offset": 40,
+            "plane": "Front"
+        }
+    },
+    {
         "tool": "create_sketch",
         "args": {
-            "plane": "Front"
+            "plane": "Plane1"
         }
     },
     {
         "tool": "draw_circle",
         "args": {
-            "radius": 10
+            "radius": 4,
+            "x": 0,
+            "y": 45
         }
     },
     {
@@ -30,20 +39,16 @@
         "args": {
             "points": [
                 [
-                    0,
-                    0
+                    40,
+                    45
                 ],
                 [
-                    20,
+                    55,
                     30
                 ],
                 [
                     40,
-                    30
-                ],
-                [
-                    60,
-                    0
+                    15
                 ]
             ]
         }

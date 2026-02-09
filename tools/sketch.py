@@ -512,6 +512,44 @@ def draw_slot(length, width):
     sm.CreateLine(half_len, -r, 0, -half_len, -r, 0)
     return f"Slot {length}x{width}mm drawn"
 
+def draw_spline(points):
+    """
+    Draws a spline curve through the specified points.
+    Used for sweep paths.
+    
+    Args:
+        points: List of [x, y] coordinates in mm.
+                Example: [[0, 0], [50, 25], [100, 0]]
+    
+    Note: All Z coordinates are set to 0 (2D sketch).
+    """
+    import win32com.client
+    
+    _require_sketch_active()
+    sm = _sm()
+    
+    # Build the points array (x, y, z triplets in meters)
+    num_points = len(points)
+    point_array = []
+    
+    for p in points:
+        x = p[0] / 1000.0  # mm to meters
+        y = p[1] / 1000.0
+        z = 0  # 2D sketch
+        point_array.extend([x, y, z])
+    
+    # Convert to VARIANT array
+    import pythoncom
+    variant_array = win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, point_array)
+    
+    # Create the spline using CreateSpline2 (CreateSpline returns None in some versions)
+    result = sm.CreateSpline2(variant_array, False)
+    
+    if result:
+        return f"Spline drawn through {num_points} points"
+    else:
+        raise Exception("Failed to create spline")
+
 def validate_closed_profile():
     """Confirms sketch is active and ready for features."""
     _require_sketch_active()

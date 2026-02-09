@@ -147,13 +147,51 @@ For a cupboard with width=W, height=H, depth=D (built on Top plane, extruded up)
 - Front face faces positive Z direction
 - Shell removes TOP face (which becomes the back when standing upright)
 
+**G. FEATURE SELECTION - WHEN TO USE WHAT:**
+Choose the right feature for the shape:
+
+EXTRUDE - for straight, constant cross-section shapes:
+- Boxes, cylinders, plates, walls, shelves
+- Profile stays same along entire depth
+
+REVOLVE - for circular/radial shapes around an axis:
+- Spheres, cones, bowls, vases, wheels, rings
+- Profile rotates around a centerline
+
+LOFT - for shapes that TRANSITION between different profiles:
+- Funnels (circle to smaller circle)
+- Transition ducts (rectangle to circle)
+- Tapered containers (square bottom to round top)
+- Organic shapes changing cross-section
+- Example: Cup with wider rim than base
+
+SWEEP - for shapes that FOLLOW A PATH:
+- Handles (cup handles, door handles, drawer pulls)
+- Pipes and tubes along curved routes
+- Headphone headbands
+- Cables, wires, hoses
+- Bent tubes, curved railings
+- Any shape that curves in 3D space
+
+**CRITICAL SWEEP CONSTRAINT:**
+Profile MUST be at origin (0,0) on Front plane.
+Path MUST start at origin (0,0) on Right plane.
+Both must share the 3D origin point (0,0,0) for sweep to work!
+
+For objects with handles (cups, mugs, pitchers):
+1. Create handle FIRST at origin using sweep
+2. Then create body OFFSET from origin so handle attaches to edge
+   Example: Cup radius=40mm → draw_circle(radius=40, x=-40) to put origin at cup edge
+
 **OBJECT DECOMPOSITION CHECKLIST:**
 Before generating JSON, mentally decompose the object:
 1. What is the OUTER SHAPE? (box, cylinder, etc.)
 2. Does it need to be HOLLOW? (use shell)
 3. What INTERNAL features? (shelves, dividers)
 4. What EXTERNAL features? (legs, doors, handles)
-5. What REFINEMENTS? (fillets, chamfers)
+5. Does any part TRANSITION shape? (use loft)
+6. Does any part CURVE along a path? (use sweep)
+7. What REFINEMENTS? (fillets, chamfers)
 
 **EXAMPLE DECOMPOSITIONS:**
 - Cupboard = Box body → shell → shelves → door
@@ -161,6 +199,10 @@ Before generating JSON, mentally decompose the object:
 - Bookshelf = Box body → shell → multiple shelves (no door)
 - Desk = Table top + legs + drawer cavity
 - Nightstand = Small cupboard + legs
+- Mug/Cup with handle = SWEEP handle FIRST at origin → then cylinder body OFFSET (x=-radius)
+- Headphones = SWEEP headband at origin → then ear cups offset from origin
+- Funnel = LOFT(large circle to small circle)
+- Pitcher = SWEEP handle FIRST → then LOFT body offset from handle
 
 ### DEFAULT DIMENSIONS:
 - Chair seat: 450x450x40mm, legs: Ø40mm x 450mm tall, back: 450x400x40mm
@@ -354,6 +396,61 @@ Return ONLY valid JSON array. No markdown, no comments.
     {"tool": "thread_tap", "args": {"diameter": 6, "pitch": 1.0, "depth": 5}}
 ]
 ```
+
+**Curved Handle (for cup, drawer, etc.):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Front"}},
+    {"tool": "draw_circle", "args": {"radius": 5}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Right"}},
+    {"tool": "draw_spline", "args": {"points": [[0, 0], [20, 30], [40, 30], [60, 0]]}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch1", "mark": 1, "append": false}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch2", "mark": 4, "append": true}},
+    {"tool": "sweep", "args": {}}
+]
+```
+
+**Funnel (Loft from large circle to small):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 40}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "create_reference_plane", "args": {"offset": 60, "plane": "Top"}},
+    {"tool": "create_sketch", "args": {"plane": "Plane1"}},
+    {"tool": "draw_circle", "args": {"radius": 10}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch1", "mark": 1, "append": false}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch2", "mark": 1, "append": true}},
+    {"tool": "loft", "args": {}}
+]
+```
+
+**Cup with Handle (Handle FIRST, then body offset):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Front"}},
+    {"tool": "draw_circle", "args": {"radius": 4}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Right"}},
+    {"tool": "draw_spline", "args": {"points": [[0, 45], [15, 30], [0, 15]]}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch1", "mark": 1, "append": false}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch2", "mark": 4, "append": true}},
+    {"tool": "sweep", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 40, "x": -40, "y": 0}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 60}},
+    {"tool": "select_face_at_coordinate", "args": {"x": -40, "y": 60, "z": 0}},
+    {"tool": "shell", "args": {"thickness": 3}}
+]
+```
 """
 
 AVAILABLE_TOOLS = """ -- PART --
@@ -430,8 +527,22 @@ loft() <- Smooth shape between 2+ selected sketch profiles
 create_reference_plane(offset, plane) <- Creates offset plane for loft!
     Example: create_reference_plane(offset=40, plane="Front")
 
-select_sketch(sketch_name, mark, append) <- Selects sketch for loft!
-    Use mark=1 for loft profiles, append=True for second sketch
+select_sketch(sketch_name, mark, append) <- Selects sketch for loft/sweep!
+    Use mark=1 for loft/sweep profiles
+    Use mark=4 for sweep path
+    Use append=True for second sketch
+
+sweep() <- Sweeps profile sketch along a path sketch!
+    Workflow:
+    1. Create profile sketch (circle, rectangle, etc.) on one plane
+    2. Create path sketch (spline, arc, line) on perpendicular plane
+    3. select_sketch("ProfileSketch", mark=1, append=False)
+    4. select_sketch("PathSketch", mark=4, append=True)
+    5. sweep()
+
+draw_spline(points) <- Draws spline curve for sweep paths!
+    points = [[x1, y1], [x2, y2], ...] in mm
+    Example: draw_spline(points=[[0, 0], [50, 25], [100, 0]])
 
 -- REFINEMENTS (PRE-SELECT edges first!) --
 

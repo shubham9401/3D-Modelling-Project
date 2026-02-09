@@ -47,6 +47,7 @@ TOOL_REGISTRY = {
     "draw_slot": sketch.draw_slot,
     "draw_triangle": sketch.draw_triangle,
     "draw_hexagon": sketch.draw_hexagon,
+    "draw_spline": sketch.draw_spline,
     
     # Sketch validation
     "validate_closed_profile": sketch.validate_closed_profile,
@@ -60,6 +61,7 @@ TOOL_REGISTRY = {
     "revolve_simple": feature.revolve_simple,
     "shell": feature.shell,
     "loft": feature.loft,
+    "sweep": feature.sweep,
     "create_reference_plane": feature.create_reference_plane,
     "select_sketch": feature.select_sketch,
     "fillet": feature.fillet,

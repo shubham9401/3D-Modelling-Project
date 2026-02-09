@@ -340,6 +340,140 @@ def loft():
     else:
         raise Exception("Loft creation failed. Make sure you have selected at least 2 sketches.")
 
+def sweep():
+    """
+    Sweep feature - sweeps a profile sketch along a path sketch.
+    
+    Requires:
+    - Profile sketch selected with mark=1
+    - Path sketch selected with mark=4
+    
+    Use select_sketch() to select the sketches first:
+    1. select_sketch("ProfileSketch", mark=1, append=False)
+    2. select_sketch("PathSketch", mark=4, append=True)
+    3. sweep()
+    """
+    _require_part()
+    fm = _fm()
+    
+    # swFmSweep feature type - scan for it first
+    sweep_type_id = None
+    for type_id in range(0, 200):
+        try:
+            swFeatData = fm.CreateDefinition(type_id)
+            if swFeatData is not None:
+                try:
+                    # Check for sweep specific properties
+                    _ = swFeatData.PathAlignmentType
+                    _ = swFeatData.MaintainTangency
+                    sweep_type_id = type_id
+                    print(f"    DEBUG: Found Sweep type at ID {type_id}")
+                    break
+                except:
+                    pass
+        except:
+            pass
+    
+    if sweep_type_id is None:
+        raise Exception("Could not find Sweep feature type ID")
+    
+    # Create sweep definition
+    swFeatData = fm.CreateDefinition(sweep_type_id)
+    
+    if swFeatData is None:
+        raise Exception("Failed to create Sweep definition")
+    
+    # Set sweep properties from VBA macro
+    try:
+        swFeatData.AdvancedSmoothing = False
+    except:
+        pass
+    try:
+        swFeatData.AlignWithEndFaces = 0
+    except:
+        pass
+    try:
+        swFeatData.AutoSelect = True
+    except:
+        pass
+    try:
+        swFeatData.D1ReverseTwistDir = False
+    except:
+        pass
+    try:
+        swFeatData.Direction = -1
+    except:
+        pass
+    try:
+        swFeatData.EndTangencyType = 0
+    except:
+        pass
+    try:
+        swFeatData.FeatureScope = True
+    except:
+        pass
+    try:
+        swFeatData.MaintainTangency = False
+    except:
+        pass
+    try:
+        swFeatData.Merge = True
+    except:
+        pass
+    try:
+        swFeatData.MergeSmoothFaces = True
+    except:
+        pass
+    try:
+        swFeatData.PathAlignmentType = 0
+    except:
+        pass
+    try:
+        swFeatData.StartTangencyType = 0
+    except:
+        pass
+    try:
+        swFeatData.ThinFeature = False
+    except:
+        pass
+    try:
+        swFeatData.ThinWallType = 0
+    except:
+        pass
+    try:
+        swFeatData.TwistControlType = 0
+    except:
+        pass
+    try:
+        swFeatData.SetTwistAngle(0)
+    except:
+        pass
+    try:
+        swFeatData.SetWallThickness(True, 0)
+    except:
+        pass
+    
+    # Get feature count before
+    model = _model()
+    feat_count_before = fm.GetFeatureCount(True)
+    
+    # Create the sweep feature
+    print(f"    DEBUG: Creating sweep feature...")
+    result = fm.CreateFeature(swFeatData)
+    print(f"    DEBUG: CreateFeature returned: {result}")
+    
+    feat_count_after = fm.GetFeatureCount(True)
+    print(f"    DEBUG: Feature count: {feat_count_before} -> {feat_count_after}")
+    
+    if result or feat_count_after > feat_count_before:
+        try:
+            model.ForceRebuild3(True)
+        except:
+            pass
+        return "Sweep created: profile swept along path"
+    else:
+        raise Exception("Sweep creation failed. Make sure profile (mark=1) and path (mark=4) sketches are selected.")
+
 def create_reference_plane(offset, plane="Front"):
     """
     Creates a reference plane at an offset distance from an existing plane.
