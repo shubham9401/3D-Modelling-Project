@@ -126,21 +126,44 @@ Sketch -> Draw -> validate_closed_profile -> Extrude.
 **C. VERTICAL DIVIDER:**
 Same as shelf but oriented vertically, use different face selection
 
-**D. DOOR (on FRONT face of cabinet - Z-axis direction):**
-For a cupboard with width=W, height=H, depth=D (built on Top plane, extruded up):
-1. select_face_at_coordinate(0, H/2, D/2) ← FRONT face center (Z = depth/2)
+**D. DOOR (on FRONT face of cabinet - CRITICAL COORDINATE CALCULATION):**
+For a cupboard with width=W, depth=D, height=H (built on Top plane, extruded UP):
+- The FRONT face is at Z = D/2 (positive Z direction)
+- The FRONT face CENTER is at: (X=0, Y=H/2, Z=D/2)
+
+**CORRECT door workflow:**
+1. select_face_at_coordinate(0, H/2, D/2) ← FRONT face CENTER
 2. create_sketch_on_selected_face
-3. draw_rectangle(width=W-40, height=H-40) ← slightly smaller than opening
+3. draw_rectangle(width=W-40, height=H-40) ← 20mm smaller on each side
 4. validate → extrude(15) ← door thickness 15mm, OUTWARD from cabinet
 
-**Example for 600x800x400 cupboard:**
-- Front face center: (0, 400, 200) ← Z=depth/2=200, Y=height/2=400
-- Door size: 560x760mm (20mm inset on each side)
+**Example for 600x400x800 cupboard (W=600, D=400, H=800):**
+- Front face center: select_face_at_coordinate(0, 400, 200)
+  - X = 0 (centered)
+  - Y = 800/2 = 400 (half the HEIGHT)
+  - Z = 400/2 = 200 (half the DEPTH)
+- Door size: 560x760mm (W-40 x H-40)
+
+❌ WRONG: select_face_at_coordinate(0, 800, 400) ← selects TOP edge, not front face!
+❌ WRONG: select_face_at_coordinate(0, H, D) ← selects corner, not center!
+✅ CORRECT: select_face_at_coordinate(0, H/2, D/2) ← front face CENTER
 
 **E. LEGS (for tables, chairs, stools):**
+**For RECTANGULAR base (W x H):**
 1. create_sketch(Top) ← on Top Plane, NOT on a face!
 2. draw 4 circles at corner positions: (±(W/2-inset), ±(H/2-inset))
 3. validate → extrude(negative_depth) ← extends DOWN from origin
+
+**For CIRCULAR base (radius R):**
+- Legs must be INSIDE the circle!
+- For 4 legs at 45° angles, use: distance = (R - leg_radius - 20) / √2 ≈ 0.7 × (R - leg_radius - 20)
+- Example: Stool with R=200mm seat, 20mm leg radius:
+  - max_distance = (200 - 20 - 20) = 160mm
+  - leg_position = 160 × 0.7 ≈ 110mm
+  - Legs at: (±110, ±110) ← INSIDE the circle!
+  
+❌ WRONG for circular seat R=200: legs at (±150, ±150) → distance = 212mm > 200mm (OUTSIDE!)
+✅ CORRECT for circular seat R=200: legs at (±110, ±110) → distance = 155mm < 200mm (INSIDE!)
 
 **F. CUPBOARD/CABINET ORIENTATION:**
 - Build on TOP Plane: rectangle → extrude UP (positive depth = height)
@@ -211,8 +234,17 @@ Before generating JSON, mentally decompose the object:
 - Bookshelf: 800x300x1800mm body, 20mm walls, 15mm shelves
 - Pipe: Specify OD and ID
 
-### JSON FORMAT:
-Return ONLY valid JSON array. No markdown, no comments.
+### JSON FORMAT (CRITICAL - FOLLOW EXACTLY):
+⚠️ RETURN ONLY A JSON ARRAY - NOTHING ELSE!
+⚠️ NO explanations, NO comments, NO markdown, NO text before or after!
+⚠️ DO NOT say "here is the code" or "you can adjust" - JUST RETURN JSON!
+
+WRONG OUTPUT:
+"Here is the code to create a gear: [...]"
+"Note: This is a simplified example..."
+
+CORRECT OUTPUT:
+[{"tool": "create_part", "args": {}}, ...]
 
 ### EXAMPLES:
 
@@ -239,7 +271,7 @@ Return ONLY valid JSON array. No markdown, no comments.
 ]
 ```
 
-**Cup (40mm radius, 100mm tall, 3mm walls):**
+**Mug with Curved Handle (using SWEEP for handle):**
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -248,7 +280,54 @@ Return ONLY valid JSON array. No markdown, no comments.
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": 100}},
     {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 100, "z": 0}},
+    {"tool": "shell", "args": {"thickness": 3}},
+    {"tool": "create_sketch", "args": {"plane": "Front"}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": 45, "y": 80}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Right"}},
+    {"tool": "draw_arc", "args": {"radius": 30, "start_angle": -90, "end_angle": 90, "x": 45, "y": 50}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch2", "mark": 1, "append": false}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch3", "mark": 4, "append": true}},
+    {"tool": "sweep", "args": {}}
+]
+```
+
+**Vase (80mm base diameter, 40mm top diameter, 150mm tall using LOFT):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 40}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "create_reference_plane", "args": {"offset": 150, "plane": "Top"}},
+    {"tool": "create_sketch", "args": {"plane": "Plane1"}},
+    {"tool": "draw_circle", "args": {"radius": 20}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch1", "mark": 1, "append": false}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch2", "mark": 1, "append": true}},
+    {"tool": "loft", "args": {}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 150, "z": 0}},
     {"tool": "shell", "args": {"thickness": 3}}
+]
+```
+
+**Washer (OD=20mm, ID=8mm, thickness=2mm):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 10}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 2}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 2, "z": 0}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_circle", "args": {"radius": 4}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "cut_through_all", "args": {}}
 ]
 ```
 
@@ -288,6 +367,24 @@ Return ONLY valid JSON array. No markdown, no comments.
     {"tool": "draw_rectangle", "args": {"width": 450, "height": 20, "x": 0, "y": 215}},
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": 400}}
+]
+```
+
+**Stool (CIRCULAR seat R=200mm, legs INSIDE the circle at ±110):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 200}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 40}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 20, "x": 110, "y": 110}},
+    {"tool": "draw_circle", "args": {"radius": 20, "x": -110, "y": 110}},
+    {"tool": "draw_circle", "args": {"radius": 20, "x": 110, "y": -110}},
+    {"tool": "draw_circle", "args": {"radius": 20, "x": -110, "y": -110}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": -450}}
 ]
 ```
 
@@ -332,6 +429,46 @@ Return ONLY valid JSON array. No markdown, no comments.
     {"tool": "fillet", "args": {"radius": 10}},
     {"tool": "select_edge_at_coordinate", "args": {"x": 0, "y": 30, "z": -300}},
     {"tool": "fillet", "args": {"radius": 10}}
+]
+```
+
+**Cupboard (600x400x800mm, with shelf and door):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_rectangle", "args": {"width": 600, "height": 400}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 800}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 800, "z": 0}},
+    {"tool": "shell", "args": {"thickness": 20}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 400, "z": -180}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_rectangle", "args": {"width": 560, "height": 360}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 15}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 400, "z": 200}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_rectangle", "args": {"width": 560, "height": 760}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 15}}
+]
+```
+
+**Spur Gear (simplified - 20 teeth, OD=50mm):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 20}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 10}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 10, "z": 0}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_rectangle", "args": {"width": 3, "height": 5, "x": 22, "y": 0}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 10}},
+    {"tool": "circular_pattern", "args": {"count": 20, "angle": 360}}
 ]
 ```
 
@@ -527,6 +664,17 @@ loft() <- Smooth shape between 2+ selected sketch profiles
 create_reference_plane(offset, plane) <- Creates offset plane for loft!
     Example: create_reference_plane(offset=40, plane="Front")
 
+select_sketch(sketch_name, mark, append) <- Selects sketch for loft/sweep!
+    Use mark=1 for loft profiles, mark=4 for sweep path, append=True for additional selections
+
+sweep() <- Create 3D shape by sweeping profile along path (HANDLES, PIPES, TUBES!)
+    WORKFLOW for mug handle:
+    1. Create mug body first (cylinder + shell)
+    2. Create PROFILE sketch (small circle for handle cross-section)
+    3. Create PATH sketch (arc/curve defining the handle shape)
+    4. select_sketch("ProfileSketch", mark=1, append=False)
+    5. select_sketch("PathSketch", mark=4, append=True)
+    6. sweep()
 select_sketch(sketch_name, mark, append) <- Selects sketch for loft/sweep!
     Use mark=1 for loft/sweep profiles
     Use mark=4 for sweep path
