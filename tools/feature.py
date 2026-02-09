@@ -340,6 +340,84 @@ def loft():
     else:
         raise Exception("Loft creation failed. Make sure you have selected at least 2 sketches.")
 
+def sweep():
+    """
+    Sweep feature - creates a 3D shape by sweeping a profile along a path.
+    Perfect for: mug handles, pipes, tubes, rails, cables.
+    
+    WORKFLOW:
+    1. Create a PROFILE sketch (the cross-section shape, e.g., circle for pipe)
+    2. Create a PATH sketch (the curve the profile follows, e.g., arc for handle)
+    3. Select profile sketch: select_sketch("Sketch1", mark=1, append=False)
+    4. Select path sketch: select_sketch("Sketch2", mark=4, append=True)
+    5. Call sweep()
+    
+    The profile will be swept along the path to create a 3D solid.
+    """
+    _require_part()
+    fm = _fm()
+    
+    # InsertProtrusionSwept2 parameters:
+    # (Propagate, Alignment, TwistControlType, TwistAngle, 
+    #  AdvancedSmoothing, StartScale, EndScale, IsThinBody, 
+    #  WallThickness1, WallThickness2, ThinType, 
+    #  PathAlign, MergeSmooth, UseFeatScope, 
+    #  UseAutoSelect, TangencyControlType, MergeBodies, 
+    #  AssemblyFeatureScope, AutoSelectComponents, 
+    #  PropagateFeatureToParts)
+    
+    try:
+        result = fm.InsertProtrusionSwept2(
+            False,   # Propagate
+            0,       # Alignment (0 = None)
+            0,       # TwistControlType (0 = None)
+            0,       # TwistAngle
+            False,   # AdvancedSmoothing
+            1,       # StartScale
+            1,       # EndScale
+            False,   # IsThinBody
+            0,       # WallThickness1
+            0,       # WallThickness2
+            0,       # ThinType
+            False,   # PathAlign
+            True,    # MergeSmooth
+            True,    # UseFeatScope
+            True,    # UseAutoSelect
+            0,       # TangencyControlType
+            True,    # MergeBodies
+            0,       # AssemblyFeatureScope
+            False,   # AutoSelectComponents
+            True     # PropagateFeatureToParts
+        )
+        
+        if result:
+            return "Sweep created: profile swept along path"
+        else:
+            raise Exception("Sweep failed - check that profile and path sketches are selected")
+            
+    except Exception as e:
+        # Try simpler InsertProtrusionSwept (older API)
+        try:
+            result = fm.InsertProtrusionSwept(
+                False,  # Propagate
+                0,      # Alignment
+                0,      # TwistControlType
+                0,      # TwistAngle
+                True,   # AdvancedSmoothing
+                1,      # StartScale
+                1,      # EndScale
+                False,  # IsThinBody
+                0,      # Thickness1
+                0,      # Thickness2
+                0       # ThinType
+            )
+            if result:
+                return "Sweep created: profile swept along path"
+            else:
+                raise Exception(f"Sweep failed: {e}")
+        except Exception as e2:
+            raise Exception(f"Sweep failed. Error: {e2}. Make sure profile (mark=1) and path (mark=4) are selected.")
+
 def create_reference_plane(offset, plane="Front"):
     """
     Creates a reference plane at an offset distance from an existing plane.

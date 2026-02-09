@@ -229,7 +229,7 @@ CORRECT OUTPUT:
 ]
 ```
 
-**Cup (40mm radius, 100mm tall, 3mm walls):**
+**Mug with Curved Handle (using SWEEP for handle):**
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -238,6 +238,37 @@ CORRECT OUTPUT:
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": 100}},
     {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 100, "z": 0}},
+    {"tool": "shell", "args": {"thickness": 3}},
+    {"tool": "create_sketch", "args": {"plane": "Front"}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": 45, "y": 80}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Right"}},
+    {"tool": "draw_arc", "args": {"radius": 30, "start_angle": -90, "end_angle": 90, "x": 45, "y": 50}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch2", "mark": 1, "append": false}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch3", "mark": 4, "append": true}},
+    {"tool": "sweep", "args": {}}
+]
+```
+
+**Vase (80mm base diameter, 40mm top diameter, 150mm tall using LOFT):**
+```json
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 40}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "create_reference_plane", "args": {"offset": 150, "plane": "Top"}},
+    {"tool": "create_sketch", "args": {"plane": "Plane1"}},
+    {"tool": "draw_circle", "args": {"radius": 20}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "exit_sketch", "args": {}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch1", "mark": 1, "append": false}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch2", "mark": 1, "append": true}},
+    {"tool": "loft", "args": {}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 150, "z": 0}},
     {"tool": "shell", "args": {"thickness": 3}}
 ]
 ```
@@ -536,8 +567,17 @@ loft() <- Smooth shape between 2+ selected sketch profiles
 create_reference_plane(offset, plane) <- Creates offset plane for loft!
     Example: create_reference_plane(offset=40, plane="Front")
 
-select_sketch(sketch_name, mark, append) <- Selects sketch for loft!
-    Use mark=1 for loft profiles, append=True for second sketch
+select_sketch(sketch_name, mark, append) <- Selects sketch for loft/sweep!
+    Use mark=1 for loft profiles, mark=4 for sweep path, append=True for additional selections
+
+sweep() <- Create 3D shape by sweeping profile along path (HANDLES, PIPES, TUBES!)
+    WORKFLOW for mug handle:
+    1. Create mug body first (cylinder + shell)
+    2. Create PROFILE sketch (small circle for handle cross-section)
+    3. Create PATH sketch (arc/curve defining the handle shape)
+    4. select_sketch("ProfileSketch", mark=1, append=False)
+    5. select_sketch("PathSketch", mark=4, append=True)
+    6. sweep()
 
 -- REFINEMENTS (PRE-SELECT edges first!) --
 
