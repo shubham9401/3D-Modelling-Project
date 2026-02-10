@@ -6,14 +6,63 @@
     {
         "tool": "create_sketch",
         "args": {
-            "plane": "Front"
+            "plane": "Top"
         }
     },
     {
         "tool": "draw_circle",
         "args": {
-            "radius": 10
+            "radius": 40
         }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "extrude",
+        "args": {
+            "depth": 100
+        }
+    },
+    {
+        "tool": "select_face_at_coordinate",
+        "args": {
+            "x": 0,
+            "y": 100,
+            "z": 0
+        }
+    },
+    {
+        "tool": "shell",
+        "args": {
+            "thickness": 3
+        }
+    },
+    {
+        "tool": "create_reference_plane",
+        "args": {
+            "plane": "Right",
+            "offset": 40
+        }
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Plane1"
+        }
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 5,
+            "x": 0,
+            "y": 25
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
     },
     {
         "tool": "exit_sketch",
@@ -22,7 +71,7 @@
     {
         "tool": "create_sketch",
         "args": {
-            "plane": "Right"
+            "plane": "Front"
         }
     },
     {
@@ -30,20 +79,16 @@
         "args": {
             "points": [
                 [
-                    0,
-                    0
+                    40,
+                    25
                 ],
                 [
-                    20,
-                    30
+                    65,
+                    50
                 ],
                 [
                     40,
-                    30
-                ],
-                [
-                    60,
-                    0
+                    75
                 ]
             ]
         }
@@ -55,7 +100,7 @@
     {
         "tool": "select_sketch",
         "args": {
-            "sketch_name": "Sketch1",
+            "sketch_name": "Sketch2",
             "mark": 1,
             "append": false
         }
@@ -63,7 +108,7 @@
     {
         "tool": "select_sketch",
         "args": {
-            "sketch_name": "Sketch2",
+            "sketch_name": "Sketch3",
             "mark": 4,
             "append": true
         }

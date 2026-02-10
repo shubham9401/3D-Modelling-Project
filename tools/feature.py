@@ -355,124 +355,69 @@ def sweep():
     """
     _require_part()
     fm = _fm()
-    
-    # swFmSweep feature type - scan for it first
-    sweep_type_id = None
-    for type_id in range(0, 200):
-        try:
-            swFeatData = fm.CreateDefinition(type_id)
-            if swFeatData is not None:
-                try:
-                    # Check for sweep specific properties
-                    _ = swFeatData.PathAlignmentType
-                    _ = swFeatData.MaintainTangency
-                    sweep_type_id = type_id
-                    print(f"    DEBUG: Found Sweep type at ID {type_id}")
-                    break
-                except:
-                    pass
-        except:
-            pass
-    
-    if sweep_type_id is None:
-        raise Exception("Could not find Sweep feature type ID")
-    
-    # Create sweep definition
-    swFeatData = fm.CreateDefinition(sweep_type_id)
-    
-    if swFeatData is None:
-        raise Exception("Failed to create Sweep definition")
-    
-    # Set sweep properties from VBA macro
-    try:
-        swFeatData.AdvancedSmoothing = False
-    except:
-        pass
-    try:
-        swFeatData.AlignWithEndFaces = 0
-    except:
-        pass
-    try:
-        swFeatData.AutoSelect = True
-    except:
-        pass
-    try:
-        swFeatData.D1ReverseTwistDir = False
-    except:
-        pass
-    try:
-        swFeatData.Direction = -1
-    except:
-        pass
-    try:
-        swFeatData.EndTangencyType = 0
-    except:
-        pass
-    try:
-        swFeatData.FeatureScope = True
-    except:
-        pass
-    try:
-        swFeatData.MaintainTangency = False
-    except:
-        pass
-    try:
-        swFeatData.Merge = True
-    except:
-        pass
-    try:
-        swFeatData.MergeSmoothFaces = True
-    except:
-        pass
-    try:
-        swFeatData.PathAlignmentType = 0
-    except:
-        pass
-    try:
-        swFeatData.StartTangencyType = 0
-    except:
-        pass
-    try:
-        swFeatData.ThinFeature = False
-    except:
-        pass
-    try:
-        swFeatData.ThinWallType = 0
-    except:
-        pass
-    try:
-        swFeatData.TwistControlType = 0
-    except:
-        pass
-    try:
-        swFeatData.SetTwistAngle(0)
-    except:
-        pass
-    try:
-        swFeatData.SetWallThickness(True, 0)
-    except:
-        pass
-    
-    # Get feature count before
     model = _model()
+    
     feat_count_before = fm.GetFeatureCount(True)
     
-    # Create the sweep feature
-    print(f"    DEBUG: Creating sweep feature...")
-    result = fm.CreateFeature(swFeatData)
-    print(f"    DEBUG: CreateFeature returned: {result}")
-    
-    feat_count_after = fm.GetFeatureCount(True)
-    print(f"    DEBUG: Feature count: {feat_count_before} -> {feat_count_after}")
-    
-    if result or feat_count_after > feat_count_before:
-        try:
+    # STRATEGY 1: Modern CreateFeature (The method you were using)
+    # We keep this but catch the failure.
+    try:
+        print("    DEBUG: Attempting Strategy 1 (CreateFeature)...")
+        sweep_type_id = None
+        # Scan for sweep type ID
+        for type_id in range(0, 200):
+            try:
+                swFeatData = fm.CreateDefinition(type_id)
+                if swFeatData is not None:
+                    try:
+                        _ = swFeatData.PathAlignmentType
+                        sweep_type_id = type_id
+                        break
+                    except:
+                        pass
+            except:
+                pass
+        
+        if sweep_type_id is not None:
+            swFeatData = fm.CreateDefinition(sweep_type_id)
+            # Minimal properties to avoid conflicts
+            swFeatData.Merge = True
+            swFeatData.AutoSelect = True
+            
+            result = fm.CreateFeature(swFeatData)
+            
+            # Check if it worked
+            if result is not None:
+                print("    DEBUG: CreateFeature success.")
+                model.ForceRebuild3(True)
+                return "Sweep created: profile swept along path"
+    except Exception as e:
+        print(f"    DEBUG: Strategy 1 failed: {e}")
+
+    # STRATEGY 2: Legacy InsertProtrusionSweep (The "Macro" way)
+    # This is often more reliable for simple sweeps.
+    print("    DEBUG: CreateFeature failed/returned None. Attempting Strategy 2 (InsertProtrusionSweep)...")
+    try:
+        # InsertProtrusionSweep(Propagate, Alignment, Twist, Merge)
+        # False = No Propagate, 0 = Default Align, 0 = No Twist, False = No Merge (SW defaults often handle this)
+        # We try this simple signature first.
+        res = fm.InsertProtrusionSweep(False, 0, 0, False)
+        
+        # Check feature count to verify success
+        feat_count_after = fm.GetFeatureCount(True)
+        if feat_count_after > feat_count_before:
             model.ForceRebuild3(True)
-        except:
-            pass
-        return "Sweep created: profile swept along path"
-    else:
-        raise Exception("Sweep creation failed. Make sure profile (mark=1) and path (mark=4) sketches are selected.")
+            return "Sweep created (Legacy method)"
+            
+    except Exception as e:
+        print(f"    DEBUG: Strategy 2 failed: {e}")
+
+    # Final Check
+    feat_count_after = fm.GetFeatureCount(True)
+    if feat_count_after > feat_count_before:
+        return "Sweep created"
+        
+    raise Exception("Sweep creation failed. Make sure profile (mark=1) and path (mark=4) sketches are selected and intersect.")
 
 def create_reference_plane(offset, plane="Front"):
     """

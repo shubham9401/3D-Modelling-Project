@@ -1,4 +1,3 @@
-
 """
 SYSTEM PROMPT & TOOL DEFINITIONS - PRODUCTION VERSION
 """
@@ -202,9 +201,55 @@ Path MUST start at origin (0,0) on Right plane.
 Both must share the 3D origin point (0,0,0) for sweep to work!
 
 For objects with handles (cups, mugs, pitchers):
-1. Create handle FIRST at origin using sweep
-2. Then create body OFFSET from origin so handle attaches to edge
-   Example: Cup radius=40mm → draw_circle(radius=40, x=-40) to put origin at cup edge
+**CRITICAL: Use REFERENCE PLANES to align handle Profile with Path!**
+
+1. Create CUP BODY first (centered at origin).
+2. Create REFERENCE PLANE offset to the RIGHT of the cup (tangent to wall, X direction).
+3. Create PROFILE sketch on the Reference Plane (Circle).
+4. Create PATH sketch on FRONT plane that STARTS exactly at the Profile center.
+5. Sweep to create handle tube.
+
+**COMPLETE JSON FOR CUP WITH HANDLE (R=40mm, H=100mm):**
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 40}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 100}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 100, "z": 0}},
+    {"tool": "shell", "args": {"thickness": 3}},
+    
+    // STEP 1: REFERENCE PLANE at X=40 (Right side of cup)
+    {"tool": "create_reference_plane", "args": {"plane": "Right", "offset": 40}},
+    
+    // STEP 2: PROFILE on Reference Plane (matches Path start)
+    // On Right Plane Offset, we are in YZ-local plane. 
+    // We draw at (0, 25). Local origin projects to Global (40, 0, 0).
+    // So Circle is at Global (40, 25, 0).
+    {"tool": "create_sketch", "args": {"plane": "Plane1"}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": 0, "y": 25}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "exit_sketch", "args": {}},
+    
+    // STEP 3: PATH on Front Plane (XY)
+    // We start at X=40, Y=25 to match the Profile.
+    {"tool": "create_sketch", "args": {"plane": "Front"}},
+    {"tool": "draw_spline", "args": {"points": [[40, 25], [65, 50], [40, 75]]}},
+    {"tool": "exit_sketch", "args": {}},
+    
+    // STEP 4: SWEEP
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch2", "mark": 1, "append": false}},
+    {"tool": "select_sketch", "args": {"sketch_name": "Sketch3", "mark": 4, "append": true}},
+    {"tool": "sweep", "args": {}}
+]
+
+**Key coordinates for R=40mm cup:**
+- Cup centered at origin (0,0)
+- Cup wall is at radius 40mm
+- Reference Plane "Plane1" is at X=40 (Right Face)
+- Handle path starts at (40, 25) on Front Plane (which means X=40, Y=25)
+- Handle path goes to (65, 50) ← OUTSIDE cup (X > 40)
+- Profile circle at (0, 25) on Ref Plane ← Corresponds to Global X=40, Y=25!
 
 **OBJECT DECOMPOSITION CHECKLIST:**
 Before generating JSON, mentally decompose the object:
@@ -222,7 +267,7 @@ Before generating JSON, mentally decompose the object:
 - Bookshelf = Box body → shell → multiple shelves (no door)
 - Desk = Table top + legs + drawer cavity
 - Nightstand = Small cupboard + legs
-- Mug/Cup with handle = SWEEP handle FIRST at origin → then cylinder body OFFSET (x=-radius)
+- Mug/Cup with handle = CUP BODY FIRST (centered) → shell → REF PLANE (X=40) → Profile → Path → SWEEP
 - Headphones = SWEEP headband at origin → then ear cups offset from origin
 - Funnel = LOFT(large circle to small circle)
 - Pitcher = SWEEP handle FIRST → then LOFT body offset from handle
@@ -258,9 +303,11 @@ CORRECT OUTPUT:
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "revolve", "args": {"angle": 360}}
 ]
+
 ```
 
 **Cone (Radius 5mm, Height 50mm):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -269,9 +316,11 @@ CORRECT OUTPUT:
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "revolve", "args": {"angle": 360}}
 ]
+
 ```
 
-**Mug with Curved Handle (using SWEEP for handle):**
+**Mug with Curved Handle (using SWEEP and REFERENCE PLANE):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -281,20 +330,27 @@ CORRECT OUTPUT:
     {"tool": "extrude", "args": {"depth": 100}},
     {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 100, "z": 0}},
     {"tool": "shell", "args": {"thickness": 3}},
-    {"tool": "create_sketch", "args": {"plane": "Front"}},
-    {"tool": "draw_circle", "args": {"radius": 5, "x": 45, "y": 80}},
+    
+    {"tool": "create_reference_plane", "args": {"plane": "Right", "offset": 40}},
+    
+    {"tool": "create_sketch", "args": {"plane": "Plane1"}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": 0, "y": 25}},
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "exit_sketch", "args": {}},
-    {"tool": "create_sketch", "args": {"plane": "Right"}},
-    {"tool": "draw_arc", "args": {"radius": 30, "start_angle": -90, "end_angle": 90, "x": 45, "y": 50}},
+    
+    {"tool": "create_sketch", "args": {"plane": "Front"}},
+    {"tool": "draw_spline", "args": {"points": [[40, 25], [65, 50], [40, 75]]}},
     {"tool": "exit_sketch", "args": {}},
+    
     {"tool": "select_sketch", "args": {"sketch_name": "Sketch2", "mark": 1, "append": false}},
     {"tool": "select_sketch", "args": {"sketch_name": "Sketch3", "mark": 4, "append": true}},
     {"tool": "sweep", "args": {}}
 ]
+
 ```
 
 **Vase (80mm base diameter, 40mm top diameter, 150mm tall using LOFT):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -313,9 +369,11 @@ CORRECT OUTPUT:
     {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 150, "z": 0}},
     {"tool": "shell", "args": {"thickness": 3}}
 ]
+
 ```
 
 **Washer (OD=20mm, ID=8mm, thickness=2mm):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -329,9 +387,11 @@ CORRECT OUTPUT:
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "cut_through_all", "args": {}}
 ]
+
 ```
 
 **Box with hole (Smart Selection):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -345,9 +405,11 @@ CORRECT OUTPUT:
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "cut_through_all", "args": {}}
 ]
+
 ```
 
 **Chair (4 CIRCULAR legs in ONE sketch, backrest at BACK EDGE):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -368,9 +430,11 @@ CORRECT OUTPUT:
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": 400}}
 ]
+
 ```
 
 **Stool (CIRCULAR seat R=200mm, legs INSIDE the circle at ±110):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -386,9 +450,11 @@ CORRECT OUTPUT:
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": -450}}
 ]
+
 ```
 
 **Table (800x600mm top, 50mm leg diameter, 700mm tall with 4 legs at corners):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -404,9 +470,11 @@ CORRECT OUTPUT:
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": -700}}
 ]
+
 ```
 
 **Table with Rounded Edges (MUST include legs + fillets):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -430,9 +498,11 @@ CORRECT OUTPUT:
     {"tool": "select_edge_at_coordinate", "args": {"x": 0, "y": 30, "z": -300}},
     {"tool": "fillet", "args": {"radius": 10}}
 ]
+
 ```
 
 **Cupboard (600x400x800mm, with shelf and door):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -453,9 +523,11 @@ CORRECT OUTPUT:
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": 15}}
 ]
+
 ```
 
 **Spur Gear (simplified - 20 teeth, OD=50mm):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -470,9 +542,11 @@ CORRECT OUTPUT:
     {"tool": "extrude", "args": {"depth": 10}},
     {"tool": "circular_pattern", "args": {"count": 20, "angle": 360}}
 ]
+
 ```
 
 **Box with Filleted Edges (50x50x30mm box with 5mm fillet):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -483,9 +557,11 @@ CORRECT OUTPUT:
     {"tool": "select_edge_at_coordinate", "args": {"x": 25, "y": 30, "z": 0}},
     {"tool": "fillet", "args": {"radius": 5}}
 ]
+
 ```
 
 **Threaded Bolt (M6x1.0, 6mm diameter shaft, 20mm length, 10mm thread depth):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -496,9 +572,11 @@ CORRECT OUTPUT:
     {"tool": "select_edge_at_coordinate", "args": {"x": 3, "y": 0, "z": 0}},
     {"tool": "thread", "args": {"diameter": 6, "pitch": 1.0, "depth": 10}}
 ]
+
 ```
 
 **Hex Head Bolt (M6x1.0, 10mm hex head, 30mm shaft):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -514,9 +592,11 @@ CORRECT OUTPUT:
     {"tool": "select_edge_at_coordinate", "args": {"x": 3, "y": 5, "z": 0}},
     {"tool": "thread", "args": {"diameter": 6, "pitch": 1.0, "depth": 25}}
 ]
+
 ```
 
 **Hex Nut (M6x1.0, 10mm across flats, 5mm thick):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -532,9 +612,11 @@ CORRECT OUTPUT:
     {"tool": "select_edge_at_coordinate", "args": {"x": 2.5, "y": 5, "z": 0}},
     {"tool": "thread_tap", "args": {"diameter": 6, "pitch": 1.0, "depth": 5}}
 ]
+
 ```
 
 **Curved Handle (for cup, drawer, etc.):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -548,9 +630,11 @@ CORRECT OUTPUT:
     {"tool": "select_sketch", "args": {"sketch_name": "Sketch2", "mark": 4, "append": true}},
     {"tool": "sweep", "args": {}}
 ]
+
 ```
 
 **Funnel (Loft from large circle to small):**
+
 ```json
 [
     {"tool": "create_part", "args": {}},
@@ -565,29 +649,9 @@ CORRECT OUTPUT:
     {"tool": "select_sketch", "args": {"sketch_name": "Sketch2", "mark": 1, "append": true}},
     {"tool": "loft", "args": {}}
 ]
+
 ```
 
-**Cup with Handle (Handle FIRST, then body offset):**
-```json
-[
-    {"tool": "create_part", "args": {}},
-    {"tool": "create_sketch", "args": {"plane": "Front"}},
-    {"tool": "draw_circle", "args": {"radius": 4}},
-    {"tool": "exit_sketch", "args": {}},
-    {"tool": "create_sketch", "args": {"plane": "Right"}},
-    {"tool": "draw_spline", "args": {"points": [[0, 45], [15, 30], [0, 15]]}},
-    {"tool": "exit_sketch", "args": {}},
-    {"tool": "select_sketch", "args": {"sketch_name": "Sketch1", "mark": 1, "append": false}},
-    {"tool": "select_sketch", "args": {"sketch_name": "Sketch2", "mark": 4, "append": true}},
-    {"tool": "sweep", "args": {}},
-    {"tool": "create_sketch", "args": {"plane": "Top"}},
-    {"tool": "draw_circle", "args": {"radius": 40, "x": -40, "y": 0}},
-    {"tool": "validate_closed_profile", "args": {}},
-    {"tool": "extrude", "args": {"depth": 60}},
-    {"tool": "select_face_at_coordinate", "args": {"x": -40, "y": 60, "z": 0}},
-    {"tool": "shell", "args": {"thickness": 3}}
-]
-```
 """
 
 AVAILABLE_TOOLS = """ -- PART --
@@ -653,44 +717,46 @@ revolve_simple(angle=360) <- Use if profile/axis already selected
 shell(thickness) <- Hollows body. PRE-SELECT face to remove first!
 
 loft() <- Smooth shape between 2+ selected sketch profiles
-    Workflow: 
-    1. Create sketch on first plane, draw profile, exit_sketch
-    2. create_reference_plane(offset, plane) - creates offset plane
-    3. Create sketch on new plane (Plane1), draw profile, exit_sketch
-    4. select_sketch("Sketch1", mark=1, append=False)
-    5. select_sketch("Sketch2", mark=1, append=True)
-    6. loft()
+Workflow:
+1. Create sketch on first plane, draw profile, exit_sketch
+2. create_reference_plane(offset, plane) - creates offset plane
+3. Create sketch on new plane (Plane1), draw profile, exit_sketch
+4. select_sketch("Sketch1", mark=1, append=False)
+5. select_sketch("Sketch2", mark=1, append=True)
+6. loft()
 
 create_reference_plane(offset, plane) <- Creates offset plane for loft!
-    Example: create_reference_plane(offset=40, plane="Front")
+Example: create_reference_plane(offset=40, plane="Front")
 
 select_sketch(sketch_name, mark, append) <- Selects sketch for loft/sweep!
-    Use mark=1 for loft profiles, mark=4 for sweep path, append=True for additional selections
+Use mark=1 for loft profiles, mark=4 for sweep path, append=True for additional selections
 
 sweep() <- Create 3D shape by sweeping profile along path (HANDLES, PIPES, TUBES!)
-    WORKFLOW for mug handle:
-    1. Create mug body first (cylinder + shell)
-    2. Create PROFILE sketch (small circle for handle cross-section)
-    3. Create PATH sketch (arc/curve defining the handle shape)
-    4. select_sketch("ProfileSketch", mark=1, append=False)
-    5. select_sketch("PathSketch", mark=4, append=True)
-    6. sweep()
+WORKFLOW for mug handle:
+1. Create mug body first (cylinder + shell)
+2. Create REFERENCE PLANE offset to the side of the cup (tangent to wall).
+3. Create PROFILE sketch on the Reference Plane (Circle).
+4. Create PATH sketch on Front/Right plane that STARTS exactly at the Profile center.
+5. select_sketch("ProfileSketch", mark=1, append=False)
+6. select_sketch("PathSketch", mark=4, append=True)
+7. sweep()
+
 select_sketch(sketch_name, mark, append) <- Selects sketch for loft/sweep!
-    Use mark=1 for loft/sweep profiles
-    Use mark=4 for sweep path
-    Use append=True for second sketch
+Use mark=1 for loft/sweep profiles
+Use mark=4 for sweep path
+Use append=True for second sketch
 
 sweep() <- Sweeps profile sketch along a path sketch!
-    Workflow:
-    1. Create profile sketch (circle, rectangle, etc.) on one plane
-    2. Create path sketch (spline, arc, line) on perpendicular plane
-    3. select_sketch("ProfileSketch", mark=1, append=False)
-    4. select_sketch("PathSketch", mark=4, append=True)
-    5. sweep()
+Workflow:
+1. Create profile sketch (circle, rectangle, etc.) on one plane
+2. Create path sketch (spline, arc, line) on perpendicular plane
+3. select_sketch("ProfileSketch", mark=1, append=False)
+4. select_sketch("PathSketch", mark=4, append=True)
+5. sweep()
 
 draw_spline(points) <- Draws spline curve for sweep paths!
-    points = [[x1, y1], [x2, y2], ...] in mm
-    Example: draw_spline(points=[[0, 0], [50, 25], [100, 0]])
+points = [[x1, y1], [x2, y2], ...] in mm
+Example: draw_spline(points=[[0, 0], [50, 25], [100, 0]])
 
 -- REFINEMENTS (PRE-SELECT edges first!) --
 
@@ -701,24 +767,24 @@ chamfer(distance, angle)
 -- THREADS (for bolts/screws/nuts) --
 
 thread(diameter, pitch, depth) <- EXTERNAL thread for BOLTS! Uses Metric Die profile.
-    PRE-SELECT the circular edge of a cylinder.
-    Example: M6x1.0 bolt thread = thread(diameter=6, pitch=1.0, depth=10)
-    
+PRE-SELECT the circular edge of a cylinder.
+Example: M6x1.0 bolt thread = thread(diameter=6, pitch=1.0, depth=10)
+
 thread_tap(diameter, pitch, depth) <- INTERNAL thread for NUTS! Uses Metric Tap profile.
-    PRE-SELECT the circular edge of a HOLE.
-    Example: M6x1.0 nut thread = thread_tap(diameter=6, pitch=1.0, depth=5)
-    
+PRE-SELECT the circular edge of a HOLE.
+Example: M6x1.0 nut thread = thread_tap(diameter=6, pitch=1.0, depth=5)
+
 Common metric thread sizes: M3x0.5, M4x0.7, M5x0.8, M6x1.0, M8x1.25, M10x1.5
 
 -- SHEET METAL --
 
 sheet_metal_base_flange(thickness, bend_radius, depth) <- Creates sheet metal from sketch!
-    Draw closed profile first, then call this tool.
-    Example: sheet_metal_base_flange(thickness=1, bend_radius=1, depth=20)
-    
+Draw closed profile first, then call this tool.
+Example: sheet_metal_base_flange(thickness=1, bend_radius=1, depth=20)
+
 edge_flange(length, angle, gap_distance) <- Adds flange to sheet metal edge!
-    PRE-SELECT an edge of a sheet metal part first.
-    Example: edge_flange(length=20, angle=90)
+PRE-SELECT an edge of a sheet metal part first.
+Example: edge_flange(length=20, angle=90)
 
 -- PATTERNS --
 
