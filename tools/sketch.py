@@ -133,7 +133,6 @@ def select_edge_at_coordinate(x, y, z):
     Uses SelectByRay for reliable edge selection.
     
     IMPORTANT: Call this BEFORE fillet() to select the edge(s) to fillet.
-    You can call this multiple times with append=True to select multiple edges.
     
     Args:
         x, y, z: Coordinates near the edge to select (in mm)
@@ -143,43 +142,49 @@ def select_edge_at_coordinate(x, y, z):
     
     x_m, y_m, z_m = x/1000.0, y/1000.0, z/1000.0
     
-    # Try SelectByID2 first for edges
-    status = model.Extension.SelectByID2("", "EDGE", x_m, y_m, z_m, False, 0, nothing, 0)
+    # Clear any previous selection
+    model.ClearSelection2(True)
     
-    if not status:
-        # If failed, try SelectByRay with different directions
-        # Type = 1 for edges
-        ray_directions = [
-            (0, -1, 0),   # Down
-            (0, 1, 0),    # Up
-            (1, 0, 0),    # Right
-            (-1, 0, 0),   # Left
-            (0, 0, 1),    # Front
-            (0, 0, -1),   # Back
-        ]
+    # Try SelectByRay FIRST (more reliable for edges than SelectByID2)
+    ray_directions = [
+        (0, -1, 0),   # Down
+        (0, 1, 0),    # Up
+        (1, 0, 0),    # Right
+        (-1, 0, 0),   # Left
+        (0, 0, 1),    # Front
+        (0, 0, -1),   # Back
+    ]
+    
+    status = False
+    for dx, dy, dz in ray_directions:
+        ox = x_m - dx * 0.01
+        oy = y_m - dy * 0.01
+        oz = z_m - dz * 0.01
         
-        for dx, dy, dz in ray_directions:
-            # Offset the origin slightly in the opposite direction of the ray
-            ox = x_m - dx * 0.01
-            oy = y_m - dy * 0.01
-            oz = z_m - dz * 0.01
-            
-            status = model.Extension.SelectByRay(
-                ox, oy, oz,           # Origin
-                dx, dy, dz,           # Direction
-                0.001,                # Radius
-                1,                    # Type: 1 = edge
-                False,                # Append
-                0,                    # Mark
-                0                     # Option
-            )
-            if status:
-                break
+        status = model.Extension.SelectByRay(
+            ox, oy, oz,
+            dx, dy, dz,
+            0.002,                # Radius (slightly larger for reliability)
+            1,                    # Type: 1 = edge
+            False,                # Append = False (first selection)
+            1,                    # Mark = 1 (for fillet)
+            0                     # Option
+        )
+        if status:
+            break
+    
+    # Fallback to SelectByID2
+    if not status:
+        status = model.Extension.SelectByID2("", "EDGE", x_m, y_m, z_m, False, 1, nothing, 0)
     
     if not status:
         raise Exception(f"No edge found at coordinates ({x}, {y}, {z})")
     
-    return f"Selected edge at ({x}, {y}, {z})"
+    # Verify selection
+    selMgr = model.SelectionManager
+    count = selMgr.GetSelectedObjectCount2(-1)
+    
+    return f"Selected edge at ({x}, {y}, {z}) [total selected: {count}]"
 
 def select_edge_at_coordinate_append(x, y, z):
     """
@@ -194,31 +199,39 @@ def select_edge_at_coordinate_append(x, y, z):
     
     x_m, y_m, z_m = x/1000.0, y/1000.0, z/1000.0
     
-    # Try SelectByID2 with append=True
-    status = model.Extension.SelectByID2("", "EDGE", x_m, y_m, z_m, True, 0, nothing, 0)
+    # Get count before
+    selMgr = model.SelectionManager
+    count_before = selMgr.GetSelectedObjectCount2(-1)
     
-    if not status:
-        # Try SelectByRay with append
-        ray_directions = [
-            (0, -1, 0), (0, 1, 0), (1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1),
-        ]
+    # Try SelectByRay with Append=True FIRST
+    ray_directions = [
+        (0, -1, 0), (0, 1, 0), (1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1),
+    ]
+    
+    status = False
+    for dx, dy, dz in ray_directions:
+        ox = x_m - dx * 0.01
+        oy = y_m - dy * 0.01
+        oz = z_m - dz * 0.01
         
-        for dx, dy, dz in ray_directions:
-            ox = x_m - dx * 0.01
-            oy = y_m - dy * 0.01
-            oz = z_m - dz * 0.01
-            
-            status = model.Extension.SelectByRay(
-                ox, oy, oz, dx, dy, dz,
-                0.001, 1, True, 0, 0  # Append=True
-            )
-            if status:
-                break
+        status = model.Extension.SelectByRay(
+            ox, oy, oz, dx, dy, dz,
+            0.002, 1, True, 1, 0  # Append=True, Mark=1
+        )
+        if status:
+            break
+    
+    # Fallback to SelectByID2 with append
+    if not status:
+        status = model.Extension.SelectByID2("", "EDGE", x_m, y_m, z_m, True, 1, nothing, 0)
     
     if not status:
         raise Exception(f"No edge found at coordinates ({x}, {y}, {z})")
     
-    return f"Appended edge at ({x}, {y}, {z}) to selection"
+    # Verify selection count increased
+    count_after = selMgr.GetSelectedObjectCount2(-1)
+    
+    return f"Appended edge at ({x}, {y}, {z}) [total selected: {count_after}]"
 
 def select_face_by_normal(direction="up"):
     """Intelligently selects a face based on its orientation."""

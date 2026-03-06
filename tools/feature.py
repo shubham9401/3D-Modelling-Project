@@ -736,37 +736,45 @@ def circular_pattern(count, angle=360):
     fm = _fm()
     nothing = get_nothing()
     
-    # Traverse features using FirstFeature/GetNextFeature (more reliable)
     print(f"    DEBUG: Looking for last extrude feature...")
     
-    last_feature = None
     last_feature_name = None
     
-    feat = model.FirstFeature()
-    while feat is not None:
+    # Strategy 1: Try SelectByID2 with common feature names (most reliable)
+    # Try in reverse order so we get the LAST extrude
+    common_names = [
+        "Cut-Extrude3", "Boss-Extrude3", "Cut-Extrude2", "Boss-Extrude2",
+        "Cut-Extrude1", "Boss-Extrude1", "Extrude2", "Extrude1",
+    ]
+    
+    for name in common_names:
         try:
-            feat_type = feat.GetTypeName2()
-            feat_name = feat.Name
-            # Check if it's an extrude-type feature
-            if "Extrusion" in feat_type or "Boss" in feat_type or "extrude" in feat_type.lower():
-                last_feature = feat
-                last_feature_name = feat_name
-                print(f"    DEBUG: Found extrude: '{feat_name}' (type: {feat_type})")
+            if model.Extension.SelectByID2(name, "BODYFEATURE", 0, 0, 0, False, 4, nothing, 0):
+                last_feature_name = name
+                print(f"    DEBUG: Found by name: '{name}'")
+                # Don't break - keep looking for higher-numbered features
         except:
             pass
-        feat = feat.GetNextFeature()
     
-    if last_feature is None:
-        # If no extrusion found, try to get feature by common name patterns
-        for name in ["Boss-Extrude2", "Boss-Extrude1", "Extrude2", "Extrude1"]:
-            try:
-                result = model.Extension.SelectByID2(name, "BODYFEATURE", 0, 0, 0, False, 4, nothing, 0)
-                if result:
-                    last_feature_name = name
-                    print(f"    DEBUG: Found by name: '{name}'")
+    # Strategy 2: If no common name worked, try FirstFeature traversal (may fail on some COM objects)
+    if last_feature_name is None:
+        try:
+            feat = model.FirstFeature()
+            while feat is not None:
+                try:
+                    feat_type = feat.GetTypeName2()
+                    feat_name = feat.Name
+                    if "Extrusion" in feat_type or "Boss" in feat_type or "extrude" in feat_type.lower():
+                        last_feature_name = feat_name
+                        print(f"    DEBUG: Found extrude: '{feat_name}' (type: {feat_type})")
+                except:
+                    pass
+                try:
+                    feat = feat.GetNextFeature()
+                except:
                     break
-            except:
-                pass
+        except Exception as e:
+            print(f"    DEBUG: FirstFeature traversal failed: {e}")
     
     if last_feature_name is None:
         raise Exception("No extrude/cut feature found to pattern!")
@@ -1322,3 +1330,97 @@ def edge_flange(length=20, angle=90, gap_distance=0):
     model.ClearSelection2(True)
     
     raise Exception(f"Edge flange creation failed. Make sure you selected an edge of a sheet metal part.")
+
+# ============================================================
+# DELETE / MODIFY FEATURES
+# ============================================================
+
+def delete_feature(feature_name):
+    """
+    Delete a feature from the model by name.
+    
+    Use get_feature_tree to see available feature names first.
+    Common names: "Boss-Extrude1", "Boss-Extrude2", "Sketch1", "Fillet1", etc.
+    
+    Args:
+        feature_name: Exact name of the feature to delete (e.g., "Boss-Extrude1")
+    """
+    import re
+    
+    _require_part()
+    model = _model()
+    nothing = get_nothing()
+    
+    # Step 0: Exit any active sketch using the proven method from exit_sketch()
+    try:
+        model.InsertSketch2(True)
+    except:
+        pass
+    model.ClearSelection2(True)
+    
+    # Build list of name candidates: exact name + common SolidWorks variations
+    name_candidates = [feature_name]
+    
+    name_variations = {
+        "Extrude": ["Boss-Extrude", "Extrude"],
+        "Cut": ["Cut-Extrude", "Cut"],
+        "Revolve": ["Boss-Revolve", "Revolve"],
+        "Loft": ["Loft-Boss", "Loft"],
+        "Sweep": ["Sweep-Boss", "Sweep"],
+    }
+    
+    for key, prefixes in name_variations.items():
+        if key.lower() in feature_name.lower():
+            num_match = re.search(r'(\d+)', feature_name)
+            num = num_match.group(1) if num_match else "1"
+            for prefix in prefixes:
+                candidate = f"{prefix}{num}"
+                if candidate != feature_name and candidate not in name_candidates:
+                    name_candidates.append(candidate)
+    
+    print(f"    DEBUG: Trying to delete feature. Candidates: {name_candidates}")
+    
+    # Step 1: Try SelectByID2 with each candidate name + type (same as circular_pattern)
+    selected = False
+    used_name = None
+    sel_types = ["BODYFEATURE", "SKETCH", "REFSURFACE", "REFPLANE", "SOLIDBODY"]
+    
+    for name in name_candidates:
+        for sel_type in sel_types:
+            try:
+                if model.Extension.SelectByID2(name, sel_type, 0, 0, 0, False, 0, nothing, 0):
+                    selected = True
+                    used_name = name
+                    print(f"    DEBUG: Selected '{name}' as {sel_type}")
+                    break
+            except Exception as e:
+                print(f"    DEBUG: SelectByID2('{name}', '{sel_type}') error: {e}")
+        if selected:
+            break
+
+    if not selected:
+        raise Exception(
+            f"Could not select feature '{feature_name}'. "
+            f"Tried names: {name_candidates} with types: {sel_types}"
+        )
+    
+    # Step 2: Delete the selected feature
+    try:
+        result = model.Extension.DeleteSelection2(0)  # 0 = delete absorbed features too
+        print(f"    DEBUG: DeleteSelection2 result: {result}")
+    except Exception as e:
+        print(f"    DEBUG: DeleteSelection2 error: {e}")
+        raise Exception(f"Failed to delete feature '{used_name}': {e}")
+    
+    # Step 3: Rebuild
+    try:
+        model.ForceRebuild3(True)
+    except:
+        try:
+            model.EditRebuild3()
+        except:
+            pass
+    
+    model.ClearSelection2(True)
+    
+    return f"Deleted feature '{used_name}'"

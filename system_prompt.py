@@ -790,4 +790,14 @@ Example: edge_flange(length=20, angle=90)
 
 linear_pattern(count, spacing)
 
-circular_pattern(count, angle) """
+circular_pattern(count, angle)
+
+-- FEATURE MODIFICATION (for MODIFY mode) --
+
+delete_feature(feature_name) <- Deletes a feature by name from the model!
+Use get_feature_tree first to see available feature names.
+Example: delete_feature(feature_name="Boss-Extrude1")
+
+get_feature_tree() <- Lists all features in the model with names and types.
+Use this to understand the model structure before modifying.
+"""

@@ -12,6 +12,7 @@ project_root = os.path.dirname(current_dir)
 sys.path.append(project_root)
 
 from tools import part, sketch, feature
+from tools import model_inspector
 
 # ============================================================
 # TOOL REGISTRY
@@ -75,6 +76,14 @@ TOOL_REGISTRY = {
     "linear_pattern": feature.linear_pattern,
     "circular_pattern": feature.circular_pattern,
     "mirror_feature": feature.mirror_feature,
+    
+    # Feature modification
+    "delete_feature": feature.delete_feature,
+    
+    # Model inspection
+    "get_model_properties": model_inspector.get_model_properties,
+    "get_bounding_box": model_inspector.get_bounding_box,
+    "get_feature_tree": model_inspector.get_feature_tree,
 }
 
 # ============================================================
