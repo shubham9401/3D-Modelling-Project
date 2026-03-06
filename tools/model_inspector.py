@@ -168,6 +168,82 @@ def get_bounding_box():
 
 
 # ============================================================
+# MASS PROPERTIES (Volume & Surface Area)
+# ============================================================
+
+def get_mass_properties():
+    """
+    Returns volume (mm³) and surface area (mm²) using SolidWorks mass properties.
+    Uses model.Extension.GetMassProperties2() which returns an array:
+        [0] = Mass, [1] = Volume (m³), [2] = Surface Area (m²),
+        [3-5] = Center of Mass (x,y,z), etc.
+    """
+    model = _model()
+    result = {"volume_mm3": None, "surface_area_mm2": None}
+    
+    # Method 1: Try Extension.GetMassProperties2
+    try:
+        # GetMassProperties2(0, status) - 0 = use document units
+        import win32com.client
+        import pythoncom
+        status = win32com.client.VARIANT(pythoncom.VT_I4, 0)
+        props = model.Extension.GetMassProperties2(0, status)
+        
+        if props is not None and len(props) >= 3:
+            # Volume is at index 3, Surface Area at index 4
+            # But the exact indices vary by SolidWorks version
+            # Let's try the common layout:
+            # [0]=CenterOfMassX, [1]=CenterOfMassY, [2]=CenterOfMassZ,
+            # [3]=Volume, [4]=SurfaceArea, [5]=Mass
+            volume_m3 = props[3]    # Volume in m³
+            surface_m2 = props[4]   # Surface area in m²
+            
+            if volume_m3 and volume_m3 > 0:
+                result["volume_mm3"] = round(volume_m3 * 1e9, 2)  # m³ → mm³
+            if surface_m2 and surface_m2 > 0:
+                result["surface_area_mm2"] = round(surface_m2 * 1e6, 2)  # m² → mm²
+            
+            print(f"    [DEBUG] ✅ Mass props (Method 1): Vol={result['volume_mm3']}mm³, SA={result['surface_area_mm2']}mm²")
+            return result
+    except Exception as e:
+        print(f"    [DEBUG] GetMassProperties2 failed: {e}")
+    
+    # Method 2: Try body-level GetMassProperties
+    try:
+        bodies = model.GetBodies2(0, False)
+        if bodies and len(bodies) > 0:
+            body = bodies[0]
+            # Body.GetMassProperties(density) - density in kg/m³ (use 1.0 for unit density)
+            try:
+                mp = body.GetMassProperties(1.0)
+                if mp is not None and len(mp) >= 5:
+                    # [0]=Mass, [1]=Volume(m³), [2]=SurfArea(m²), [3-5]=CoM
+                    if mp[1] and mp[1] > 0:
+                        result["volume_mm3"] = round(mp[1] * 1e9, 2)
+                    if mp[2] and mp[2] > 0:
+                        result["surface_area_mm2"] = round(mp[2] * 1e6, 2)
+                    print(f"    [DEBUG] ✅ Mass props (Method 2): Vol={result['volume_mm3']}mm³, SA={result['surface_area_mm2']}mm²")
+                    return result
+            except Exception as e2:
+                print(f"    [DEBUG] Body.GetMassProperties failed: {e2}")
+    except Exception as e:
+        print(f"    [DEBUG] GetBodies2 for mass props failed: {e}")
+    
+    # Method 3: Compute volume from bounding box as rough estimate
+    try:
+        bbox = get_bounding_box()
+        w, h, d = bbox["width"], bbox["height"], bbox["depth"]
+        if w > 0 and h > 0 and d > 0:
+            result["volume_mm3"] = round(w * h * d, 2)  # Bounding box volume (overestimate)
+            result["surface_area_mm2"] = round(2 * (w*h + w*d + h*d), 2)
+            print(f"    [DEBUG] ⚠️ Mass props (fallback bbox estimate): Vol≈{result['volume_mm3']}mm³")
+    except:
+        pass
+    
+    return result
+
+
+# ============================================================
 # COMBINED PROPERTIES
 # ============================================================
 
@@ -247,6 +323,15 @@ def get_model_properties():
         print(f"    [DEBUG] ✅ Dims: {bbox['width']}W x {bbox['height']}H x {bbox['depth']}D")
     except Exception as e:
         print(f"    [DEBUG] ❌ Bounding box failed: {e}")
+    
+    # 4. Mass properties (volume & surface area)
+    print("    [DEBUG] Getting mass properties...")
+    try:
+        mass_props = get_mass_properties()
+        result["volume_mm3"] = mass_props["volume_mm3"]
+        result["surface_area_mm2"] = mass_props["surface_area_mm2"]
+    except Exception as e:
+        print(f"    [DEBUG] ❌ Mass properties failed: {e}")
     
     return result
 

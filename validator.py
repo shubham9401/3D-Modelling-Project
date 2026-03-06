@@ -77,18 +77,21 @@ def _check_features(expected_features, actual_feature_types):
 
     # Map common feature type names to SolidWorks internal names
     TYPE_ALIASES = {
-        "Extrude": ["ICE", "Extrusion", "Boss-Extrude", "Extrude"],
-        "Cut": ["ICE", "Cut-Extrude", "Cut"],
-        "Shell": ["Shell"],
-        "Fillet": ["Fillet"],
-        "Chamfer": ["Chamfer"],
-        "Revolve": ["Revolution", "Revolve"],
-        "Loft": ["Loft"],
-        "Sweep": ["Sweep"],
-        "CircularPattern": ["CirPattern"],
-        "LinearPattern": ["LPattern"],
-        "Hole": ["HoleWzd", "Hole"],
-        "Sketch": ["ProfileFeature"],
+        "Extrude": ["ICE", "Extrusion", "Boss-Extrude", "Extrude", "Extrusion"],
+        "Cut": ["ICE", "Cut-Extrude", "Cut", "CutExtrude"],
+        "Shell": ["Shell", "ShellFeature"],
+        "Fillet": ["Fillet", "ConstRadiusFillet"],
+        "Chamfer": ["Chamfer", "ChamferFeature"],
+        "Revolve": ["Revolution", "Revolve", "BossRevolve"],
+        "Loft": ["Loft", "LoftFeature"],
+        "Sweep": ["Sweep", "SweepFeature"],
+        "CircularPattern": ["CirPattern", "CircularPattern"],
+        "LinearPattern": ["LPattern", "LinearPattern"],
+        "Hole": ["HoleWzd", "Hole", "HoleWizard"],
+        "Sketch": ["ProfileFeature", "3DProfileFeature"],
+        "Thread": ["Thread", "CosmeticThread"],
+        "Mirror": ["MirrorPattern", "Mirror"],
+        "Rib": ["Rib", "RibFeature"],
     }
 
     actual_types_lower = {k.lower(): v for k, v in actual_feature_types.items()}
@@ -176,26 +179,32 @@ def validate_model(spec, actual_properties):
                 deviations.append(detail)
 
     # ── 3. Volume (25%) ──
-    volume_score = 100  # Default pass if we can't measure
-    if actual_properties.get("volume_mm3") and expected_dims.get("width") and expected_dims.get("height") and expected_dims.get("depth"):
+    volume_score = None  # None means SKIP (will redistribute weight)
+    actual_vol = actual_properties.get("volume_mm3")
+    has_all_dims = expected_dims.get("width") and expected_dims.get("height") and expected_dims.get("depth")
+    
+    if actual_vol and has_all_dims:
         w = expected_dims["width"]
         h = expected_dims["height"]
         d = expected_dims["depth"]
         shape = spec.get("expected_shape", "box")
+        import math
 
         if shape == "box":
             expected_vol = w * h * d
         elif shape == "cylinder":
             r = w / 2
-            expected_vol = 3.14159 * r * r * h
+            expected_vol = math.pi * r * r * h
         elif shape == "sphere":
             r = w / 2
-            expected_vol = (4/3) * 3.14159 * r * r * r
+            expected_vol = (4/3) * math.pi * r * r * r
+        elif shape == "cone":
+            r = w / 2
+            expected_vol = (1/3) * math.pi * r * r * h
         else:
             expected_vol = None
 
         if expected_vol and expected_vol > 0:
-            actual_vol = actual_properties["volume_mm3"]
             vol_ratio = actual_vol / expected_vol
             if 0.8 <= vol_ratio <= 1.2:
                 volume_score = 100
@@ -208,31 +217,37 @@ def validate_model(spec, actual_properties):
                 volume_score = 0
                 checks.append({"check": "Volume", "expected": round(expected_vol, 1), "actual": actual_vol, "status": "FAIL"})
                 deviations.append(f"Volume mismatch: expected ~{round(expected_vol,1)}mm³, got {actual_vol}mm³")
-    else:
-        # Volume not measurable — skip with neutral score
-        checks.append({"check": "Volume", "expected": "N/A", "actual": "N/A", "status": "SKIP"})
+    
+    if volume_score is None:
+        checks.append({"check": "Volume", "expected": "N/A", "actual": str(actual_vol) if actual_vol else "N/A", "status": "SKIP"})
 
     # ── 4. Surface Area (15%) ──
-    surface_score = 100
-    if actual_properties.get("surface_area_mm2") and expected_dims.get("width") and expected_dims.get("height") and expected_dims.get("depth"):
+    surface_score = None  # None means SKIP
+    actual_sa = actual_properties.get("surface_area_mm2")
+    
+    if actual_sa and has_all_dims:
         w = expected_dims["width"]
         h = expected_dims["height"]
         d = expected_dims["depth"]
         shape = spec.get("expected_shape", "box")
+        import math
 
         if shape == "box":
             expected_sa = 2 * (w*h + w*d + h*d)
         elif shape == "cylinder":
             r = w / 2
-            expected_sa = 2 * 3.14159 * r * (r + h)
+            expected_sa = 2 * math.pi * r * (r + h)
         elif shape == "sphere":
             r = w / 2
-            expected_sa = 4 * 3.14159 * r * r
+            expected_sa = 4 * math.pi * r * r
+        elif shape == "cone":
+            r = w / 2
+            slant = math.sqrt(r*r + h*h)
+            expected_sa = math.pi * r * (r + slant)
         else:
             expected_sa = None
 
         if expected_sa and expected_sa > 0:
-            actual_sa = actual_properties["surface_area_mm2"]
             sa_ratio = actual_sa / expected_sa
             if 0.8 <= sa_ratio <= 1.2:
                 surface_score = 100
@@ -245,8 +260,9 @@ def validate_model(spec, actual_properties):
                 surface_score = 0
                 checks.append({"check": "Surface Area", "expected": round(expected_sa, 1), "actual": actual_sa, "status": "FAIL"})
                 deviations.append(f"Surface area mismatch: expected ~{round(expected_sa,1)}mm², got {actual_sa}mm²")
-    else:
-        checks.append({"check": "Surface Area", "expected": "N/A", "actual": "N/A", "status": "SKIP"})
+    
+    if surface_score is None:
+        checks.append({"check": "Surface Area", "expected": "N/A", "actual": str(actual_sa) if actual_sa else "N/A", "status": "SKIP"})
 
     # ── 5. Face/Body Count (15%) ──
     expected_bodies = spec.get("expected_body_count", 1)
@@ -290,14 +306,36 @@ def validate_model(spec, actual_properties):
     if expected_faces_estimate and actual_faces > 0 and not face_ok:
         deviations.append(f"Face count: expected ≥{expected_faces_estimate}, got {actual_faces}")
 
-    # ── Weighted Final Score ──
-    overall_score = round(
-        volume_score   * 0.25 +
-        dim_avg        * 0.25 +
-        feat_score     * 0.20 +
-        surface_score  * 0.15 +
-        fb_score       * 0.15
-    )
+    # ── Weighted Final Score (smart redistribution) ──
+    # If volume or surface area are unavailable (None), redistribute their weight
+    weights = {
+        "volume": 0.25,
+        "dims": 0.25,
+        "features": 0.20,
+        "surface": 0.15,
+        "fb": 0.15,
+    }
+    scores = {
+        "volume": volume_score,
+        "dims": dim_avg,
+        "features": feat_score,
+        "surface": surface_score,
+        "fb": fb_score,
+    }
+    
+    # Remove skipped checks and redistribute their weight
+    active_weights = {}
+    for key, weight in weights.items():
+        if scores[key] is not None:
+            active_weights[key] = weight
+    
+    if active_weights:
+        total_active_weight = sum(active_weights.values())
+        overall_score = round(
+            sum(scores[k] * (w / total_active_weight) for k, w in active_weights.items())
+        )
+    else:
+        overall_score = 0
 
     return {
         "score": overall_score,
@@ -349,6 +387,14 @@ def format_report(user_prompt, result):
         for dev in result["deviations"]:
             lines.append(f"    ❌ {dev}")
 
+    # Show LLM-powered fix suggestions
+    if result.get("suggestions"):
+        lines.append("")
+        lines.append("  💡 Suggested Fixes:")
+        for line in result["suggestions"].split("\n"):
+            if line.strip():
+                lines.append(f"    {line.strip()}")
+
     lines.append("")
     lines.append("═" * 55)
 
@@ -393,6 +439,14 @@ def run_validation(user_prompt):
     print("\n📊 Comparing actual model vs expected specs...")
     result = validate_model(spec, actual)
 
+    # Generate LLM fix suggestions if score is low
+    if result["deviations"] and result["score"] < 80:
+        print("\n💡 Generating fix suggestions...")
+        suggestions = _get_fix_suggestions(user_prompt, result["deviations"], actual)
+        result["suggestions"] = suggestions
+    else:
+        result["suggestions"] = None
+
     # Print report
     report = format_report(user_prompt, result)
     print(report)
@@ -409,3 +463,30 @@ def run_validation(user_prompt):
     print(f"📁 Full report saved to 'validation_report.json'")
 
     return result
+
+
+def _get_fix_suggestions(user_prompt, deviations, actual_properties):
+    """Ask LLM for actionable fix suggestions based on deviations."""
+    try:
+        from validation_prompt import SUGGESTION_PROMPT
+        from llm_client import _call_llm
+
+        actual_summary = (
+            f"Dimensions: {actual_properties['dimensions']['width']}W x "
+            f"{actual_properties['dimensions']['height']}H x "
+            f"{actual_properties['dimensions']['depth']}D mm, "
+            f"Bodies: {actual_properties['body_count']}, "
+            f"Faces: {actual_properties['face_count']}"
+        )
+
+        prompt = SUGGESTION_PROMPT.format(
+            deviations="\n".join(f"- {d}" for d in deviations),
+            prompt=user_prompt,
+            actual_summary=actual_summary,
+        )
+
+        suggestions = _call_llm("You are a helpful CAD assistant.", prompt)
+        return suggestions.strip()
+    except Exception as e:
+        print(f"   ⚠️ Could not generate suggestions: {e}")
+        return None

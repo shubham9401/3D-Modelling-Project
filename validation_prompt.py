@@ -74,3 +74,24 @@ Output:
     "notes": "Created by revolving semicircle"
 }
 """
+
+
+SUGGESTION_PROMPT = """
+You are a CAD design assistant. A model has been validated and some issues were found.
+
+Given the deviations below, suggest specific actionable fixes using available SolidWorks tools.
+Keep your response SHORT (2-4 bullet points max). Be specific about what to change.
+
+Available fix actions:
+- Modify mode: delete_feature, then recreate with correct dimensions
+- Add features: fillet, chamfer, shell, thread, hole
+- Resize: delete and recreate the extrude with correct depth
+
+DEVIATIONS:
+{deviations}
+
+ORIGINAL PROMPT: {prompt}
+ACTUAL MODEL: {actual_summary}
+
+Respond with a short numbered list of fixes. No JSON, just plain text.
+"""
