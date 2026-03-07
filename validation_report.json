@@ -1,0 +1,79 @@
+{
+    "prompt": "Create a chair",
+    "spec": {
+        "description": "Chair with seat, backrest, and legs",
+        "expected_dimensions": {
+            "width": null,
+            "height": null,
+            "depth": null
+        },
+        "expected_features": [
+            "Extrude",
+            "Cut",
+            "Fillet",
+            "Chamfer"
+        ],
+        "expected_body_count": 1,
+        "expected_shape": "custom",
+        "tolerance_percent": 10,
+        "notes": "Typical chair design involves multiple extruded parts (seat, back, legs) with cuts for openings and fillets/chamfers on edges for comfort and aesthetics."
+    },
+    "actual": {
+        "dimensions": {
+            "width": 450.0,
+            "height": 890.0,
+            "depth": 450.0
+        },
+        "bounding_box": {
+            "min_x": -225.0,
+            "min_y": -450.0,
+            "min_z": -225.0,
+            "max_x": 225.0,
+            "max_y": 440.0,
+            "max_z": 225.0,
+            "width": 450.0,
+            "height": 890.0,
+            "depth": 450.0
+        },
+        "features": [],
+        "feature_types": {},
+        "feature_count": 23,
+        "feature_tree_available": false,
+        "body_count": 1,
+        "face_count": 16,
+        "edge_count": 26,
+        "volume_mm3": 78639459.1,
+        "surface_area_mm2": null
+    },
+    "result": {
+        "score": 100,
+        "checks": [
+            {
+                "check": "Features",
+                "expected": "Extrude, Cut, Fillet, Chamfer",
+                "actual": "23 features",
+                "status": "PASS"
+            },
+            {
+                "check": "Volume",
+                "expected": "N/A",
+                "actual": "78639459.1",
+                "status": "SKIP"
+            },
+            {
+                "check": "Surface Area",
+                "expected": "N/A",
+                "actual": "N/A",
+                "status": "SKIP"
+            },
+            {
+                "check": "Face/Body Count",
+                "expected": "1B / ~?F",
+                "actual": "1B / 16F",
+                "status": "PASS"
+            }
+        ],
+        "deviations": [],
+        "suggestions": null
+    }
+}

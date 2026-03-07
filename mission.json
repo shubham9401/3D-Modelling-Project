@@ -10,9 +10,10 @@
         }
     },
     {
-        "tool": "draw_circle",
+        "tool": "draw_rectangle",
         "args": {
-            "radius": 40
+            "width": 450,
+            "height": 450
         }
     },
     {
@@ -22,42 +23,45 @@
     {
         "tool": "extrude",
         "args": {
-            "depth": 100
-        }
-    },
-    {
-        "tool": "select_face_at_coordinate",
-        "args": {
-            "x": 0,
-            "y": 100,
-            "z": 0
-        }
-    },
-    {
-        "tool": "shell",
-        "args": {
-            "thickness": 3
-        }
-    },
-    {
-        "tool": "create_reference_plane",
-        "args": {
-            "plane": "Right",
-            "offset": 40
+            "depth": 40
         }
     },
     {
         "tool": "create_sketch",
         "args": {
-            "plane": "Plane1"
+            "plane": "Top"
         }
     },
     {
         "tool": "draw_circle",
         "args": {
-            "radius": 5,
-            "x": 0,
-            "y": 25
+            "radius": 20,
+            "x": 200,
+            "y": 200
+        }
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 20,
+            "x": -200,
+            "y": 200
+        }
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 20,
+            "x": 200,
+            "y": -200
+        }
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 20,
+            "x": -200,
+            "y": -200
         }
     },
     {
@@ -65,56 +69,40 @@
         "args": {}
     },
     {
-        "tool": "exit_sketch",
+        "tool": "extrude",
+        "args": {
+            "depth": -450
+        }
+    },
+    {
+        "tool": "select_face_at_coordinate",
+        "args": {
+            "x": 0,
+            "y": 40,
+            "z": 0
+        }
+    },
+    {
+        "tool": "create_sketch_on_selected_face",
         "args": {}
     },
     {
-        "tool": "create_sketch",
+        "tool": "draw_rectangle",
         "args": {
-            "plane": "Front"
+            "width": 450,
+            "height": 40,
+            "x": 0,
+            "y": 205
         }
     },
     {
-        "tool": "draw_spline",
-        "args": {
-            "points": [
-                [
-                    40,
-                    25
-                ],
-                [
-                    65,
-                    50
-                ],
-                [
-                    40,
-                    75
-                ]
-            ]
-        }
-    },
-    {
-        "tool": "exit_sketch",
+        "tool": "validate_closed_profile",
         "args": {}
     },
     {
-        "tool": "select_sketch",
+        "tool": "extrude",
         "args": {
-            "sketch_name": "Sketch2",
-            "mark": 1,
-            "append": false
+            "depth": 400
         }
-    },
-    {
-        "tool": "select_sketch",
-        "args": {
-            "sketch_name": "Sketch3",
-            "mark": 4,
-            "append": true
-        }
-    },
-    {
-        "tool": "sweep",
-        "args": {}
     }
 ]

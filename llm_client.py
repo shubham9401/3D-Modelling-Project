@@ -61,7 +61,21 @@ def _call_llm(system_prompt, user_prompt):
         temperature=0.1,
     )
 
-    return completion.choices[0].message.content
+    content = completion.choices[0].message.content
+
+    # Databricks (and some other APIs) can return content as a list of blocks, e.g. [{"type": "text", "text": "..."}]
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and "text" in block:
+                parts.append(block["text"])
+            elif hasattr(block, "text"):
+                parts.append(block.text)
+        content = "\n".join(parts) if parts else ""
+
+    return content
 
 
 # --- MAIN FUNCTIONS ---
