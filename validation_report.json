@@ -1,7 +1,7 @@
 {
-    "prompt": "Create a chair",
+    "prompt": "filleted edge table",
     "spec": {
-        "description": "Chair with seat, backrest, and legs",
+        "description": "Table with filleted edges",
         "expected_dimensions": {
             "width": null,
             "height": null,
@@ -9,55 +9,53 @@
         },
         "expected_features": [
             "Extrude",
-            "Cut",
-            "Fillet",
-            "Chamfer"
+            "Fillet"
         ],
         "expected_body_count": 1,
-        "expected_shape": "custom",
+        "expected_shape": "box",
         "tolerance_percent": 10,
-        "notes": "Typical chair design involves multiple extruded parts (seat, back, legs) with cuts for openings and fillets/chamfers on edges for comfort and aesthetics."
+        "notes": "Rectangular table model featuring filleted (rounded) edges"
     },
     "actual": {
         "dimensions": {
-            "width": 450.0,
-            "height": 890.0,
-            "depth": 450.0
+            "width": 800.0,
+            "height": 730.0,
+            "depth": 600.0
         },
         "bounding_box": {
-            "min_x": -225.0,
-            "min_y": -450.0,
-            "min_z": -225.0,
-            "max_x": 225.0,
-            "max_y": 440.0,
-            "max_z": 225.0,
-            "width": 450.0,
-            "height": 890.0,
-            "depth": 450.0
+            "min_x": -400.0,
+            "min_y": -700.0,
+            "min_z": -300.0,
+            "max_x": 400.0,
+            "max_y": 30.0,
+            "max_z": 300.0,
+            "width": 800.0,
+            "height": 730.0,
+            "depth": 600.0
         },
         "features": [],
         "feature_types": {},
-        "feature_count": 23,
+        "feature_count": 25,
         "feature_tree_available": false,
         "body_count": 1,
-        "face_count": 16,
-        "edge_count": 26,
-        "volume_mm3": 78639459.1,
-        "surface_area_mm2": null
+        "face_count": 26,
+        "edge_count": 44,
+        "volume_mm3": null,
+        "surface_area_mm2": 0.0
     },
     "result": {
         "score": 100,
         "checks": [
             {
                 "check": "Features",
-                "expected": "Extrude, Cut, Fillet, Chamfer",
-                "actual": "23 features",
+                "expected": "Extrude, Fillet",
+                "actual": "25 features",
                 "status": "PASS"
             },
             {
                 "check": "Volume",
                 "expected": "N/A",
-                "actual": "78639459.1",
+                "actual": "N/A",
                 "status": "SKIP"
             },
             {
@@ -68,8 +66,8 @@
             },
             {
                 "check": "Face/Body Count",
-                "expected": "1B / ~?F",
-                "actual": "1B / 16F",
+                "expected": "1B / ~6F",
+                "actual": "1B / 26F",
                 "status": "PASS"
             }
         ],

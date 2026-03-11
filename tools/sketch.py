@@ -471,7 +471,7 @@ def draw_polygon(sides, radius):
     points = []
     for i in range(sides):
         angle = 2 * math.pi * i / sides
-        points.append((r * math.cos(angle), r * math.sin(angle)))
+        points.append((round(r * math.cos(angle), 10), round(r * math.sin(angle), 10)))
     
     sm = _sm()
     for i in range(len(points)):
@@ -484,6 +484,7 @@ def draw_polygon(sides, radius):
 def draw_hexagon(radius, x=0, y=0):
     """
     Draws a regular hexagon centered at (x, y).
+    Oriented with FLAT SIDES on top/bottom (standard bolt head orientation).
     
     Args:
         radius: Distance from center to vertex in mm
@@ -496,12 +497,15 @@ def draw_hexagon(radius, x=0, y=0):
     x_m = x / 1000.0
     y_m = y / 1000.0
     
-    # Generate 6 vertices of hexagon
+    # Generate 6 vertices of hexagon with 30° offset
+    # The offset ensures flat sides are on top/bottom (standard bolt head orientation)
+    # Without offset: vertex points up → flat side on left/right (wrong for bolts)
+    # With 30° offset: flat side on top/bottom (correct for bolt heads)
     points = []
     for i in range(6):
-        angle = 2 * math.pi * i / 6
-        px = x_m + r * math.cos(angle)
-        py = y_m + r * math.sin(angle)
+        angle = math.pi / 6 + (2 * math.pi * i / 6)  # Start at 30°
+        px = round(x_m + r * math.cos(angle), 10)  # Round to prevent float drift
+        py = round(y_m + r * math.sin(angle), 10)
         points.append((px, py))
     
     # Draw 6 lines connecting the vertices

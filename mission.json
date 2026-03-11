@@ -12,8 +12,8 @@
     {
         "tool": "draw_rectangle",
         "args": {
-            "width": 450,
-            "height": 450
+            "width": 800,
+            "height": 600
         }
     },
     {
@@ -23,7 +23,7 @@
     {
         "tool": "extrude",
         "args": {
-            "depth": 40
+            "depth": 30
         }
     },
     {
@@ -35,33 +35,33 @@
     {
         "tool": "draw_circle",
         "args": {
-            "radius": 20,
-            "x": 200,
-            "y": 200
+            "radius": 25,
+            "x": 350,
+            "y": 250
         }
     },
     {
         "tool": "draw_circle",
         "args": {
-            "radius": 20,
-            "x": -200,
-            "y": 200
+            "radius": 25,
+            "x": -350,
+            "y": 250
         }
     },
     {
         "tool": "draw_circle",
         "args": {
-            "radius": 20,
-            "x": 200,
-            "y": -200
+            "radius": 25,
+            "x": 350,
+            "y": -250
         }
     },
     {
         "tool": "draw_circle",
         "args": {
-            "radius": 20,
-            "x": -200,
-            "y": -200
+            "radius": 25,
+            "x": -350,
+            "y": -250
         }
     },
     {
@@ -71,38 +71,63 @@
     {
         "tool": "extrude",
         "args": {
-            "depth": -450
+            "depth": -700
         }
     },
     {
-        "tool": "select_face_at_coordinate",
+        "tool": "select_edge_at_coordinate",
         "args": {
-            "x": 0,
-            "y": 40,
+            "x": 400,
+            "y": 30,
             "z": 0
         }
     },
     {
-        "tool": "create_sketch_on_selected_face",
-        "args": {}
-    },
-    {
-        "tool": "draw_rectangle",
+        "tool": "fillet",
         "args": {
-            "width": 450,
-            "height": 40,
-            "x": 0,
-            "y": 205
+            "radius": 10
         }
     },
     {
-        "tool": "validate_closed_profile",
-        "args": {}
+        "tool": "select_edge_at_coordinate",
+        "args": {
+            "x": 0,
+            "y": 30,
+            "z": 300
+        }
     },
     {
-        "tool": "extrude",
+        "tool": "fillet",
         "args": {
-            "depth": 400
+            "radius": 10
+        }
+    },
+    {
+        "tool": "select_edge_at_coordinate",
+        "args": {
+            "x": -400,
+            "y": 30,
+            "z": 0
+        }
+    },
+    {
+        "tool": "fillet",
+        "args": {
+            "radius": 10
+        }
+    },
+    {
+        "tool": "select_edge_at_coordinate",
+        "args": {
+            "x": 0,
+            "y": 30,
+            "z": -300
+        }
+    },
+    {
+        "tool": "fillet",
+        "args": {
+            "radius": 10
         }
     }
 ]

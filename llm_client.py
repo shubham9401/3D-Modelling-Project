@@ -78,11 +78,55 @@ def _call_llm(system_prompt, user_prompt):
     return content
 
 
-# --- MAIN FUNCTIONS ---
+# --- COMPLETENESS VALIDATION ---
 
-def get_agent_response(user_request):
+# Rules: (keyword_in_request, required_tool, description)
+COMPLETENESS_RULES = [
+    # Fasteners - threads are mandatory
+    (["nut"],                  "thread_tap",  "internal thread (thread_tap)"),
+    (["bolt", "screw"],        "thread",      "external thread (thread)"),
+    # Hollow objects need shell
+    (["cup", "mug", "bowl", "vase", "container", "hollow"],
+                               "shell",       "shell (hollow interior)"),
+    # Furniture needs legs
+    (["table"],                "extrude",     "legs (negative extrude)"),
+    (["chair"],                "extrude",     "legs (negative extrude)"),
+    # Every model needs create_part
+    ([],                       "create_part", "create_part"),
+]
+
+def _check_completeness(actions, user_request):
+    """
+    Checks if the LLM output is complete based on the user request.
+    Returns a list of missing items, or empty list if complete.
+    """
+    if not actions:
+        return ["No actions generated"]
+
+    tools_used = [a.get("tool", "") for a in actions]
+    request_lower = user_request.lower()
+    missing = []
+
+    for keywords, required_tool, description in COMPLETENESS_RULES:
+        # Skip rules that don't match the request
+        if keywords and not any(kw in request_lower for kw in keywords):
+            continue
+        # Check if the required tool is present
+        if required_tool not in tools_used:
+            missing.append(description)
+
+    # Special check: nut/bolt should have enough steps (not truncated)
+    if any(kw in request_lower for kw in ["nut", "bolt"]):
+        if len(actions) < 8:
+            missing.append(f"too few steps ({len(actions)}) for a fastener - likely truncated")
+
+    return missing
+
+
+def get_agent_response(user_request, max_retries=1):
     """
     Sends user request to the LLM and returns CAD commands as JSON.
+    Includes completeness validation with automatic retry.
     """
     full_system_message = f"{SYSTEM_INSTRUCTION}\n\nAVAILABLE TOOLS:\n{AVAILABLE_TOOLS}"
 
@@ -90,10 +134,52 @@ def get_agent_response(user_request):
 
     try:
         content = _call_llm(full_system_message, user_request)
-        return clean_and_validate_json(content)
+        actions = clean_and_validate_json(content)
+
+        if not actions:
+            return None
+
+        # Check completeness
+        missing = _check_completeness(actions, user_request)
+
+        if missing and max_retries > 0:
+            missing_str = ", ".join(missing)
+            print(f"⚠️  Incomplete output detected! Missing: {missing_str}")
+            print(f"🔄 Retrying with feedback...")
+
+            retry_prompt = (
+                f"Your previous output for \"{user_request}\" was INCOMPLETE.\n"
+                f"MISSING STEPS: {missing_str}\n\n"
+                f"Regenerate the COMPLETE JSON array with ALL steps including the missing ones.\n"
+                f"Original request: {user_request}"
+            )
+
+            retry_content = _call_llm(full_system_message, retry_prompt)
+            retry_actions = clean_and_validate_json(retry_content)
+
+            if retry_actions:
+                retry_missing = _check_completeness(retry_actions, user_request)
+                if not retry_missing or len(retry_actions) > len(actions):
+                    print(f"✅ Retry successful! {len(retry_actions)} steps (was {len(actions)})")
+                    return retry_actions
+                else:
+                    print(f"⚠️  Retry still incomplete. Using best result.")
+                    return retry_actions if len(retry_actions) >= len(actions) else actions
+
+        elif missing:
+            missing_str = ", ".join(missing)
+            print(f"⚠️  WARNING: Output may be incomplete. Missing: {missing_str}")
+
+        return actions
+
     except Exception as e:
-        print(f"❌ API Error: {e}")
+        print(f"❌ API Error: {type(e).__name__}: {e}")
+        if hasattr(e, 'status_code'):
+            print(f"   HTTP Status: {e.status_code}")
+        import traceback
+        traceback.print_exc()
         return None
+
 
 
 def get_modification_response(modification_request, model_summary):
