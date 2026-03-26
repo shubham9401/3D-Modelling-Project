@@ -114,6 +114,9 @@ def mode_create():
             print("\n" + "-" * 40)
             print("STEP 4: Auto-validating the result...")
             print("-" * 40)
+            # Allow SolidWorks to finish processing geometry
+            import time
+            time.sleep(1)
             try:
                 from validator import run_validation
                 run_validation(user_request)

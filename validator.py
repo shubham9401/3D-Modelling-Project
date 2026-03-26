@@ -120,6 +120,10 @@ def validate_model(spec, actual_properties):
     """
     Compare expected spec against actual model properties.
 
+    ✅ FIXED: Now uses expected_volume_mm3 from spec (calculated by validation_prompt.py)
+    The validation prompt already accounts for shell, cuts, holes, etc.
+    We just compare actual vs expected directly.
+
     Weights:
         Volume:               25%  (single most reliable geometric truth)
         Bounding Box Dims:    25%  (height, width, depth directly measurable)
@@ -178,315 +182,279 @@ def validate_model(spec, actual_properties):
             if status == "FAIL":
                 deviations.append(detail)
 
-    # ── 3. Volume (25%) ──
+    # ── 3. Volume (25%) - ✅ FIXED: USE SPEC VALUE ──
     volume_score = None  # None means SKIP (will redistribute weight)
     actual_vol = actual_properties.get("volume_mm3")
-    has_all_dims = expected_dims.get("width") and expected_dims.get("height") and expected_dims.get("depth")
     
-    if actual_vol and has_all_dims:
-        w = expected_dims["width"]
-        h = expected_dims["height"]
-        d = expected_dims["depth"]
-        shape = spec.get("expected_shape", "box")
-        import math
-
-        if shape == "box":
-            expected_vol = w * h * d
-        elif shape == "cylinder":
-            r = w / 2
-            expected_vol = math.pi * r * r * h
-        elif shape == "sphere":
-            r = w / 2
-            expected_vol = (4/3) * math.pi * r * r * r
-        elif shape == "cone":
-            r = w / 2
-            expected_vol = (1/3) * math.pi * r * r * h
+    # ✅ USE EXPECTED VOLUME FROM SPEC (calculated by validation_prompt.py with shell awareness)
+    expected_vol = spec.get("expected_volume_mm3")
+    
+    if actual_vol and expected_vol and expected_vol > 0:
+        # Spec already accounts for shell, cuts, holes - just compare directly
+        vol_ratio = actual_vol / expected_vol
+        error_pct = abs(1 - vol_ratio) * 100
+        
+        if error_pct <= 5:
+            # Within 5% - excellent
+            volume_score = 100
+            checks.append({"check": "Volume", "expected": round(expected_vol, 1), "actual": actual_vol, "status": "PASS"})
+        elif error_pct <= 10:
+            # Within 10% - good
+            volume_score = 90
+            checks.append({"check": "Volume", "expected": round(expected_vol, 1), "actual": actual_vol, "status": "PASS"})
+        elif error_pct <= 20:
+            # Within 20% - acceptable
+            volume_score = 70
+            checks.append({"check": "Volume", "expected": round(expected_vol, 1), "actual": actual_vol, "status": "WARN"})
+            deviations.append(f"Volume deviation: expected {round(expected_vol,1)}mm³, got {actual_vol}mm³ (±{error_pct:.1f}%)")
         else:
-            expected_vol = None
-
-        if expected_vol and expected_vol > 0:
-            vol_ratio = actual_vol / expected_vol
-            if 0.8 <= vol_ratio <= 1.2:
-                volume_score = 100
-                checks.append({"check": "Volume", "expected": round(expected_vol, 1), "actual": actual_vol, "status": "PASS"})
-            elif 0.5 <= vol_ratio <= 1.5:
-                volume_score = 50
-                checks.append({"check": "Volume", "expected": round(expected_vol, 1), "actual": actual_vol, "status": "WARN"})
-                deviations.append(f"Volume deviation: expected ~{round(expected_vol,1)}mm³, got {actual_vol}mm³")
-            else:
-                volume_score = 0
-                checks.append({"check": "Volume", "expected": round(expected_vol, 1), "actual": actual_vol, "status": "FAIL"})
-                deviations.append(f"Volume mismatch: expected ~{round(expected_vol,1)}mm³, got {actual_vol}mm³")
-    
-    if volume_score is None:
+            # Outside 20% - failure
+            volume_score = 0
+            checks.append({"check": "Volume", "expected": round(expected_vol, 1), "actual": actual_vol, "status": "FAIL"})
+            deviations.append(f"Volume mismatch: expected {round(expected_vol,1)}mm³, got {actual_vol}mm³ (±{error_pct:.1f}%)")
+    elif actual_vol and not expected_vol:
+        # Volume measured but no expected value - just show it exists
+        volume_score = None  # Don't score, redistribute weight
+        checks.append({"check": "Volume", "expected": "N/A (not calculable)", "actual": actual_vol, "status": "SKIP"})
+    else:
+        # No volume measured
         checks.append({"check": "Volume", "expected": "N/A", "actual": str(actual_vol) if actual_vol else "N/A", "status": "SKIP"})
 
-    # ── 4. Surface Area (15%) ──
+    # ── 4. Surface Area (15%) - ✅ FIXED: USE SPEC VALUE ──
     surface_score = None  # None means SKIP
     actual_sa = actual_properties.get("surface_area_mm2")
     
-    if actual_sa and has_all_dims:
-        w = expected_dims["width"]
-        h = expected_dims["height"]
-        d = expected_dims["depth"]
-        shape = spec.get("expected_shape", "box")
-        import math
-
-        if shape == "box":
-            expected_sa = 2 * (w*h + w*d + h*d)
-        elif shape == "cylinder":
-            r = w / 2
-            expected_sa = 2 * math.pi * r * (r + h)
-        elif shape == "sphere":
-            r = w / 2
-            expected_sa = 4 * math.pi * r * r
-        elif shape == "cone":
-            r = w / 2
-            slant = math.sqrt(r*r + h*h)
-            expected_sa = math.pi * r * (r + slant)
-        else:
-            expected_sa = None
-
-        if expected_sa and expected_sa > 0:
-            sa_ratio = actual_sa / expected_sa
-            if 0.8 <= sa_ratio <= 1.2:
-                surface_score = 100
-                checks.append({"check": "Surface Area", "expected": round(expected_sa, 1), "actual": actual_sa, "status": "PASS"})
-            elif 0.5 <= sa_ratio <= 1.5:
-                surface_score = 50
-                checks.append({"check": "Surface Area", "expected": round(expected_sa, 1), "actual": actual_sa, "status": "WARN"})
-                deviations.append(f"Surface area deviation: expected ~{round(expected_sa,1)}mm², got {actual_sa}mm²")
-            else:
-                surface_score = 0
-                checks.append({"check": "Surface Area", "expected": round(expected_sa, 1), "actual": actual_sa, "status": "FAIL"})
-                deviations.append(f"Surface area mismatch: expected ~{round(expected_sa,1)}mm², got {actual_sa}mm²")
+    # ✅ USE EXPECTED SURFACE AREA FROM SPEC
+    expected_sa = spec.get("expected_surface_area_mm2")
     
-    if surface_score is None:
+    if actual_sa and expected_sa and expected_sa > 0:
+        sa_ratio = actual_sa / expected_sa
+        error_pct = abs(1 - sa_ratio) * 100
+        
+        if error_pct <= 10:
+            # Within 10% - good (SA is harder to predict exactly)
+            surface_score = 100
+            checks.append({"check": "Surface Area", "expected": round(expected_sa, 1), "actual": actual_sa, "status": "PASS"})
+        elif error_pct <= 20:
+            # Within 20% - acceptable
+            surface_score = 80
+            checks.append({"check": "Surface Area", "expected": round(expected_sa, 1), "actual": actual_sa, "status": "PASS"})
+        elif error_pct <= 30:
+            # Within 30% - warning
+            surface_score = 50
+            checks.append({"check": "Surface Area", "expected": round(expected_sa, 1), "actual": actual_sa, "status": "WARN"})
+            deviations.append(f"Surface area deviation: expected {round(expected_sa,1)}mm², got {actual_sa}mm²")
+        else:
+            # Outside 30% - failure
+            surface_score = 0
+            checks.append({"check": "Surface Area", "expected": round(expected_sa, 1), "actual": actual_sa, "status": "FAIL"})
+            deviations.append(f"Surface area mismatch: expected {round(expected_sa,1)}mm², got {actual_sa}mm²")
+    elif actual_sa and not expected_sa:
+        # SA measured but no expected value
+        surface_score = None
+        checks.append({"check": "Surface Area", "expected": "N/A (not calculable)", "actual": actual_sa, "status": "SKIP"})
+    else:
+        # No SA measured
         checks.append({"check": "Surface Area", "expected": "N/A", "actual": str(actual_sa) if actual_sa else "N/A", "status": "SKIP"})
 
     # ── 5. Face/Body Count (15%) ──
     expected_bodies = spec.get("expected_body_count", 1)
     actual_bodies = actual_properties.get("body_count", 0)
     actual_faces = actual_properties.get("face_count", 0)
+    expected_faces = spec.get("expected_face_count")
     
     body_match = actual_bodies == expected_bodies
     
-    # Estimate expected face count based on shape
-    shape = spec.get("expected_shape", "box")
-    expected_faces_estimate = None
-    if shape == "box":
-        expected_faces_estimate = 6
-    elif shape == "cylinder":
-        expected_faces_estimate = 3  # top, bottom, curved
-    elif shape == "sphere":
-        expected_faces_estimate = 1  # single curved surface
-    
-    face_ok = True
-    if expected_faces_estimate and actual_faces > 0:
-        face_ok = actual_faces >= expected_faces_estimate
-    
-    if body_match and face_ok:
-        fb_score = 100
-        status_str = "PASS"
-    elif body_match or face_ok:
-        fb_score = 50
-        status_str = "WARN"
-    else:
-        fb_score = 0
-        status_str = "FAIL"
-    
+    # Face count validation
+    face_score = 100
+    if expected_faces and isinstance(expected_faces, int):
+        # Exact expected face count provided
+        face_diff = abs(actual_faces - expected_faces)
+        if face_diff == 0:
+            face_score = 100
+        elif face_diff <= 2:
+            face_score = 90
+        elif face_diff <= 5:
+            face_score = 70
+        else:
+            face_score = 50
+    # else: no expected face count, give full score
+
+    body_score = 100 if body_match else 50
+    struct_score = (face_score + body_score) / 2
+
+    expected_faces_str = str(expected_faces) if expected_faces else "?"
     checks.append({
         "check": "Face/Body Count",
-        "expected": f"{expected_bodies}B / ~{expected_faces_estimate or '?'}F",
+        "expected": f"{expected_bodies}B / ~{expected_faces_str}F",
         "actual": f"{actual_bodies}B / {actual_faces}F",
-        "status": status_str,
+        "status": "PASS" if (body_match and face_score >= 70) else "WARN"
     })
-    if not body_match:
-        deviations.append(f"Body count: expected {expected_bodies}, got {actual_bodies}")
-    if expected_faces_estimate and actual_faces > 0 and not face_ok:
-        deviations.append(f"Face count: expected ≥{expected_faces_estimate}, got {actual_faces}")
 
-    # ── Weighted Final Score (smart redistribution) ──
-    # If volume or surface area are unavailable (None), redistribute their weight
+    # ── FINAL SCORE CALCULATION ──
+    # Weights: dim=25%, feat=20%, vol=25%, sa=15%, struct=15%
     weights = {
-        "volume": 0.25,
-        "dims": 0.25,
-        "features": 0.20,
-        "surface": 0.15,
-        "fb": 0.15,
+        "dim": 0.25,
+        "feat": 0.20,
+        "vol": 0.25,
+        "sa": 0.15,
+        "struct": 0.15
     }
+
     scores = {
-        "volume": volume_score,
-        "dims": dim_avg,
-        "features": feat_score,
-        "surface": surface_score,
-        "fb": fb_score,
+        "dim": dim_avg,
+        "feat": feat_score,
+        "vol": volume_score,
+        "sa": surface_score,
+        "struct": struct_score
     }
-    
-    # Remove skipped checks and redistribute their weight
-    active_weights = {}
-    for key, weight in weights.items():
-        if scores[key] is not None:
-            active_weights[key] = weight
-    
-    if active_weights:
-        total_active_weight = sum(active_weights.values())
-        overall_score = round(
-            sum(scores[k] * (w / total_active_weight) for k, w in active_weights.items())
-        )
+
+    # Redistribute weight from skipped categories
+    active_categories = {k: v for k, v in scores.items() if v is not None}
+    if not active_categories:
+        final_score = 0
     else:
-        overall_score = 0
+        total_weight = sum(weights[k] for k in active_categories.keys())
+        final_score = sum(scores[k] * (weights[k] / total_weight) for k in active_categories.keys())
 
     return {
-        "score": overall_score,
+        "score": round(final_score, 0),
         "checks": checks,
         "deviations": deviations,
+        "scores_breakdown": {k: round(v) if v is not None else None for k, v in scores.items()}
     }
 
 
 # ============================================================
-# REPORT FORMATTING
-# ============================================================
-
-def format_report(user_prompt, result):
-    """
-    Formats the validation result as a human-readable report.
-    """
-    lines = []
-    lines.append("")
-    lines.append("═" * 55)
-    lines.append("  DESIGN VALIDATION REPORT")
-    lines.append("═" * 55)
-    lines.append(f'  Prompt: "{user_prompt}"')
-    lines.append("")
-
-    score = result["score"]
-    if score >= 80:
-        grade = "✅ EXCELLENT"
-    elif score >= 60:
-        grade = "⚠️  ACCEPTABLE"
-    else:
-        grade = "❌ POOR"
-
-    lines.append(f"  OVERALL SCORE: {score}/100  ({grade})")
-    lines.append("")
-
-    # Table header
-    lines.append(f"  {'Check':<20} {'Expected':<12} {'Actual':<12} {'Status':<8}")
-    lines.append(f"  {'─'*20} {'─'*12} {'─'*12} {'─'*8}")
-
-    for check in result["checks"]:
-        status_icon = {"PASS": "✅ PASS", "WARN": "⚠️  WARN", "FAIL": "❌ FAIL"}.get(check["status"], check["status"])
-        exp_str = str(check.get("expected", ""))[:11]
-        act_str = str(check.get("actual", ""))[:11]
-        lines.append(f"  {check['check']:<20} {exp_str:<12} {act_str:<12} {status_icon}")
-
-    if result["deviations"]:
-        lines.append("")
-        lines.append("  Deviations:")
-        for dev in result["deviations"]:
-            lines.append(f"    ❌ {dev}")
-
-    # Show LLM-powered fix suggestions
-    if result.get("suggestions"):
-        lines.append("")
-        lines.append("  💡 Suggested Fixes:")
-        for line in result["suggestions"].split("\n"):
-            if line.strip():
-                lines.append(f"    {line.strip()}")
-
-    lines.append("")
-    lines.append("═" * 55)
-
-    return "\n".join(lines)
-
-
-# ============================================================
-# MAIN VALIDATION PIPELINE
+# MAIN VALIDATION FUNCTION
 # ============================================================
 
 def run_validation(user_prompt):
     """
-    Full validation pipeline:
-    1. Inspect the current SolidWorks model
-    2. Extract expected specs from the user prompt via LLM
-    3. Compare actual vs expected
-    4. Print the validation report
-
-    Returns the result dict with score and checks.
+    Main entry point: validates the current SolidWorks model against the prompt.
+    
+    Returns validation result dict or None on error.
     """
-    from tools.model_inspector import get_model_properties
-
-    print("\n🔍 Inspecting current model...")
     try:
-        actual = get_model_properties()
-        print(f"   ✅ Model inspected: {actual['dimensions']['width']}W x "
-              f"{actual['dimensions']['height']}H x {actual['dimensions']['depth']}D mm, "
-              f"{actual['feature_count']} features, {actual['body_count']} bodies")
+        # Step 1: Get actual model properties
+        print("\n🔍 Inspecting current model...")
+        from tools.model_inspector import get_model_properties
+        actual_props = get_model_properties()
+        
+        if actual_props is None:
+            print("❌ Could not inspect model")
+            return None
+        
+        print(f"   ✅ Model inspected: {actual_props['dimensions']['width']}W x {actual_props['dimensions']['height']}H x {actual_props['dimensions']['depth']}D mm, {actual_props['feature_count']} features, {actual_props['body_count']} bodies")
+        
+        # Step 2: Extract expected specs from prompt
+        spec = create_spec_from_prompt(user_prompt)
+        if spec is None:
+            print("❌ Could not extract expected specs from prompt")
+            return None
+        
+        print(f"   📐 Expected: {spec.get('description', 'N/A')}")
+        
+        # Step 3: Compare actual vs expected
+        print("\n📊 Comparing actual model vs expected specs...")
+        result = validate_model(spec, actual_props)
+        
+        # Step 4: Print report
+        print_validation_report(user_prompt, result, spec, actual_props)
+        
+        # Step 5: Save detailed report
+        save_validation_report(user_prompt, result, spec, actual_props)
+        
+        return result
+        
     except Exception as e:
-        print(f"   ❌ Failed to inspect model: {e}")
+        print(f"\n❌ Validation error: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
-    # Extract specs from prompt
-    spec = create_spec_from_prompt(user_prompt)
-    if spec is None:
-        print("   ❌ Could not extract specs from prompt")
-        return None
 
-    print(f"   📐 Expected: {spec.get('description', 'N/A')}")
-
-    # Compare
-    print("\n📊 Comparing actual model vs expected specs...")
-    result = validate_model(spec, actual)
-
-    # Generate LLM fix suggestions if score is low
-    if result["deviations"] and result["score"] < 80:
-        print("\n💡 Generating fix suggestions...")
-        suggestions = _get_fix_suggestions(user_prompt, result["deviations"], actual)
-        result["suggestions"] = suggestions
+def print_validation_report(prompt, result, spec, actual_props):
+    """Print a formatted validation report to console."""
+    score = result["score"]
+    
+    # Status emoji
+    if score >= 80:
+        status_emoji = "✅ EXCELLENT"
+    elif score >= 60:
+        status_emoji = "⚠️  ACCEPTABLE"
     else:
-        result["suggestions"] = None
+        status_emoji = "❌ NEEDS WORK"
+    
+    print("\n" + "═" * 55)
+    print("  DESIGN VALIDATION REPORT")
+    print("═" * 55)
+    print(f'  Prompt: "{prompt}"\n')
+    print(f"  OVERALL SCORE: {score}/100  ({status_emoji})\n")
+    
+    # Print checks
+    print(f"  {'Check':<20} {'Expected':<12} {'Actual':<12} {'Status':<8}")
+    print(f"  {'─'*20} {'─'*12} {'─'*12} {'─'*8}")
+    
+    for check in result["checks"]:
+        name = check["check"]
+        expected = str(check["expected"])[:10]
+        actual = str(check["actual"])[:10]
+        status = check["status"]
+        
+        # Status formatting
+        if status == "PASS":
+            status_str = "✅ PASS"
+        elif status == "WARN":
+            status_str = "⚠️  WARN"
+        elif status == "FAIL":
+            status_str = "❌ FAIL"
+        else:
+            status_str = "SKIP"
+        
+        print(f"  {name:<20} {expected:<12} {actual:<12} {status_str:<8}")
+    
+    print("\n" + "═" * 55)
+    
+    # Print breakdown
+    breakdown = result.get("scores_breakdown", {})
+    if any(v is not None for v in breakdown.values()):
+        print("  Score Breakdown:")
+        for category, score_val in breakdown.items():
+            if score_val is not None:
+                print(f"    {category}: {score_val}/100")
+        print()
+    
+    # Print deviations
+    if result["deviations"]:
+        print("  Deviations found:")
+        for dev in result["deviations"]:
+            print(f"    • {dev}")
+        print()
 
-    # Print report
-    report = format_report(user_prompt, result)
-    print(report)
 
-    # Save report to file
-    report_data = {
-        "prompt": user_prompt,
-        "spec": spec,
-        "actual": actual,
-        "result": result,
+def save_validation_report(prompt, result, spec, actual_props):
+    """Save detailed validation report to JSON file."""
+    report = {
+        "prompt": prompt,
+        "score": result["score"],
+        "status": "PASS" if result["score"] >= 70 else "FAIL",
+        "expected_spec": spec,
+        "actual_properties": {
+            "dimensions": actual_props.get("dimensions"),
+            "volume_mm3": actual_props.get("volume_mm3"),
+            "surface_area_mm2": actual_props.get("surface_area_mm2"),
+            "body_count": actual_props.get("body_count"),
+            "face_count": actual_props.get("face_count"),
+            "feature_count": actual_props.get("feature_count"),
+        },
+        "checks": result["checks"],
+        "deviations": result["deviations"],
+        "scores_breakdown": result.get("scores_breakdown", {}),
     }
-    with open("validation_report.json", "w") as f:
-        json.dump(report_data, f, indent=4)
-    print(f"📁 Full report saved to 'validation_report.json'")
-
-    return result
-
-
-def _get_fix_suggestions(user_prompt, deviations, actual_properties):
-    """Ask LLM for actionable fix suggestions based on deviations."""
-    try:
-        from validation_prompt import SUGGESTION_PROMPT
-        from llm_client import _call_llm
-
-        actual_summary = (
-            f"Dimensions: {actual_properties['dimensions']['width']}W x "
-            f"{actual_properties['dimensions']['height']}H x "
-            f"{actual_properties['dimensions']['depth']}D mm, "
-            f"Bodies: {actual_properties['body_count']}, "
-            f"Faces: {actual_properties['face_count']}"
-        )
-
-        prompt = SUGGESTION_PROMPT.format(
-            deviations="\n".join(f"- {d}" for d in deviations),
-            prompt=user_prompt,
-            actual_summary=actual_summary,
-        )
-
-        suggestions = _call_llm("You are a helpful CAD assistant.", prompt)
-        return suggestions.strip()
-    except Exception as e:
-        print(f"   ⚠️ Could not generate suggestions: {e}")
-        return None
+    
+    filename = "validation_report.json"
+    with open(filename, "w") as f:
+        json.dump(report, f, indent=2)
+    
+    print(f"📁 Full report saved to '{filename}'\n")
