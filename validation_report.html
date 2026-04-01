@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Validation Report — Spur gear with 20 teeth</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; line-height: 1.6; }
+    .container { max-width: 900px; margin: 0 auto; }
+
+    /* Header */
+    .header { background: linear-gradient(135deg, #1e293b, #334155); border-radius: 12px; padding: 32px; margin-bottom: 24px; border: 1px solid #475569; }
+    .header h1 { font-size: 24px; margin-bottom: 8px; }
+    .header .prompt { color: #94a3b8; font-style: italic; margin-bottom: 16px; word-break: break-word; }
+    .header .meta { color: #64748b; font-size: 13px; }
+
+    /* Score card */
+    .score-card { display: flex; align-items: center; gap: 24px; background: #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid #475569; }
+    .score-circle { width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; border: 4px solid #22c55e; color: #22c55e; flex-shrink: 0; }
+    .score-details { flex: 1; }
+    .score-grade { font-size: 20px; font-weight: 700; color: #22c55e; }
+    .score-note { color: #94a3b8; margin-top: 4px; font-size: 14px; }
+
+    /* Section */
+    .section { background: #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 20px; border: 1px solid #475569; }
+    .section h2 { font-size: 18px; margin-bottom: 16px; color: #f1f5f9; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+    .section h3 { font-size: 15px; margin: 16px 0 10px; color: #cbd5e1; }
+
+    /* Tables */
+    .data-table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; }
+    .data-table th { background: #334155; padding: 10px 14px; text-align: left; font-size: 13px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+    .data-table td { padding: 10px 14px; border-bottom: 1px solid #334155; font-size: 14px; }
+    .data-table tr:hover { background: #293548; }
+    .data-table code { background: #334155; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+
+    /* Badges */
+    .badge { background: #334155; color: #93c5fd; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-block; margin: 2px; }
+
+    /* Status */
+    .status-pass { color: #22c55e; font-weight: 700; }
+    .status-warn { color: #f59e0b; font-weight: 700; }
+    .status-fail { color: #ef4444; font-weight: 700; }
+    .status-skip { color: #64748b; }
+
+    /* Progress bars */
+    .bar-bg { background: #334155; border-radius: 4px; height: 8px; width: 120px; display: inline-block; vertical-align: middle; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+
+    /* Lists */
+    .check-list { list-style: none; padding: 0; }
+    .check-item { padding: 8px 12px; margin: 4px 0; border-radius: 6px; font-size: 14px; }
+    .spec-item { background: #1a2744; border-left: 3px solid #3b82f6; }
+    .design-item { background: #1a2744; border-left: 3px solid #a855f7; }
+    .deviation-list { list-style: none; padding: 0; }
+    .deviation-list li { padding: 8px 12px; margin: 4px 0; background: #2a1a1a; border-left: 3px solid #ef4444; border-radius: 6px; font-size: 14px; }
+
+    .muted { color: #64748b; font-size: 13px; }
+    .feature-tags { margin: 8px 0 16px; }
+
+    /* Two column layout */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+        <h1>🔧 Design Validation Report</h1>
+        <div class="prompt">"Create a spur gear with 20 teeth, outer diameter 50mm, 10mm thick"</div>
+        <div class="meta">Generated: 2026-04-01 12:24:36 &nbsp;|&nbsp; Shape: custom &nbsp;|&nbsp; Tolerance: 15%</div>
+    </div>
+
+    <!-- SCORE -->
+    <div class="score-card">
+        <div class="score-circle">100</div>
+        <div class="score-details">
+            <div class="score-grade">EXCELLENT</div>
+            <div class="score-note">Score based only on reliably verifiable checks. Volume/SA scored only for simple shapes with exact Python formulas.</div>
+        </div>
+    </div>
+
+    <!-- SCORED CHECKS -->
+    <div class="section">
+        <h2>✅ Scored Checks</h2>
+        <table class="data-table">
+            <tr><th>Check</th><th>Expected</th><th>Actual</th><th>Status</th></tr>
+            
+            <tr>
+                <td>Width</td>
+                <td>55</td>
+                <td>54.0</td>
+                <td><span class="status-pass">✅ PASS</span></td>
+            </tr>
+            <tr>
+                <td>Height</td>
+                <td>10</td>
+                <td>10.74</td>
+                <td><span class="status-pass">✅ PASS</span></td>
+            </tr>
+            <tr>
+                <td>Depth</td>
+                <td>55</td>
+                <td>50.0</td>
+                <td><span class="status-pass">✅ PASS</span></td>
+            </tr>
+            <tr>
+                <td>Feature: Extrude</td>
+                <td>Yes</td>
+                <td>Yes</td>
+                <td><span class="status-pass">✅ PASS</span></td>
+            </tr>
+            <tr>
+                <td>Feature: CircularPattern</td>
+                <td>Yes</td>
+                <td>Yes</td>
+                <td><span class="status-pass">✅ PASS</span></td>
+            </tr>
+            <tr>
+                <td>Body Count</td>
+                <td>1</td>
+                <td>1</td>
+                <td><span class="status-pass">✅ PASS</span></td>
+            </tr>
+        </table>
+
+        <h3>Score Breakdown</h3>
+        <table class="data-table">
+            <tr><th style="width:150px">Category</th><th style="width:80px">Score</th><th>Bar</th></tr>
+            
+                <tr>
+                    <td>Dimensions</td>
+                    <td>100/100</td>
+                    <td><div class="bar-bg"><div class="bar-fill" style="width:100%; background:#22c55e"></div></div></td>
+                </tr>
+                <tr>
+                    <td>Features</td>
+                    <td>100/100</td>
+                    <td><div class="bar-bg"><div class="bar-fill" style="width:100%; background:#22c55e"></div></div></td>
+                </tr>
+                <tr>
+                    <td>Structure</td>
+                    <td>100/100</td>
+                    <td><div class="bar-bg"><div class="bar-fill" style="width:100%; background:#22c55e"></div></div></td>
+                </tr><tr><td>Volume</td><td class="muted">— not scored</td><td></td></tr><tr><td>Surface Area</td><td class="muted">— not scored</td><td></td></tr>
+        </table>
+    </div>
+
+    <!-- DETAILED MEASUREMENTS -->
+    <div class="section">
+        <h2>📐 Model Measurements</h2>
+
+        <div class="two-col">
+            <div>
+                <h3>Bounding Box</h3>
+                
+        <table class="data-table">
+            <tr><th>Axis</th><th>Min (mm)</th><th>Max (mm)</th><th>Size (mm)</th></tr>
+            <tr><td>X (Width)</td><td>-25.0</td><td>29.0</td><td><strong>54.00</strong></td></tr>
+            <tr><td>Y (Height)</td><td>-0.37</td><td>10.37</td><td><strong>10.74</strong></td></tr>
+            <tr><td>Z (Depth)</td><td>-25.0</td><td>25.0</td><td><strong>50.00</strong></td></tr>
+        </table>
+            </div>
+            <div>
+                <h3>Volume & Surface Area</h3>
+                <table class="data-table"><tr><th>Metric</th><th>Measured Value</th><th>Scoring</th></tr><tr><td>Volume</td><td><strong>19,991.15 mm³</strong></td><td class="muted">Not scored (complex shape)</td></tr><tr><td>Surface Area</td><td><strong>5,679.34 mm²</strong></td><td class="muted">Not scored (complex shape)</td></tr></table>
+            </div>
+        </div>
+
+        <h3>Body Summary</h3>
+        <table class="data-table">
+            <tr><th>Bodies</th><th>Faces</th><th>Edges</th></tr>
+            <tr><td><strong>1</strong></td><td><strong>122</strong></td><td><strong>360</strong></td></tr>
+        </table>
+    </div>
+
+    <!-- FEATURE TREE -->
+    <div class="section">
+        <h2>🌳 Feature Tree (3 features)</h2>
+        <div class="feature-tags"><span class="badge">Boss-Extrude ×2</span> <span class="badge">CirPattern ×1</span> </div>
+        <table class="data-table">
+            <tr><th>#</th><th>Feature Name</th><th>Type</th></tr>
+            
+            <tr>
+                <td>1</td>
+                <td><code>Boss-Extrude1</code></td>
+                <td><span class="badge">Boss-Extrude</span></td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td><code>Boss-Extrude2</code></td>
+                <td><span class="badge">Boss-Extrude</span></td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td><code>CirPattern1</code></td>
+                <td><span class="badge">CirPattern</span></td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- INFO & VERIFICATION -->
+    <div class="section">
+        <h2>🔍 Verification Details</h2>
+        <h3>📊 Measured Properties</h3><table class="data-table"><tr><th>Property</th><th>Value</th><th>Note</th></tr><tr><td>Face Count</td><td><strong>122</strong></td><td class="muted">122 faces detected</td></tr><tr><td>Volume</td><td><strong>19,991.2 mm³</strong></td><td class="muted">Not scored (complex shape — no formula to verify against)</td></tr><tr><td>Surface Area</td><td><strong>5,679.3 mm²</strong></td><td class="muted">Not scored (complex shape — no formula to verify against)</td></tr></table><h3>📋 Specific Measurements (from prompt)</h3><ul class="check-list"><li class="check-item spec-item">Outer diameter: 50mm</li><li class="check-item spec-item">Number of teeth: 20</li><li class="check-item spec-item">Thickness (face width): 10mm</li><li class="check-item spec-item">Estimated tooth protrusion beyond outer diameter: ~2.5mm per side (total BBox increase ~5mm)</li></ul><h3>👁️ Design Verification Checklist</h3><p class="muted">Verify these visually in SolidWorks:</p><ul class="check-list"><li class="check-item design-item">Circular base disk with 50mm outer diameter</li><li class="check-item design-item">20 evenly spaced teeth around the perimeter</li><li class="check-item design-item">Teeth extend radially beyond the 50mm diameter</li><li class="check-item design-item">Uniform 10mm thickness across the gear</li><li class="check-item design-item">Teeth profile consistent around the gear</li></ul>
+        
+    </div>
+
+    <!-- EXPECTED SPEC -->
+    <div class="section">
+        <h2>📋 Expected Specification (from LLM)</h2>
+        
+        <table class="data-table">
+            <tr><th>Field</th><th>Value</th></tr>
+            <tr><td>Description</td><td>Spur gear with 20 teeth</td></tr>
+            <tr><td>Expected Shape</td><td><span class="badge">custom</span></td></tr>
+            <tr><td>Expected Dimensions</td><td>55 W × 10 H × 55 D mm</td></tr>
+            <tr><td>Expected Features</td><td>Extrude, CircularPattern</td></tr>
+            <tr><td>Expected Bodies</td><td>1</td></tr>
+            <tr><td>Tolerance</td><td>15%</td></tr>
+        </table>
+        <p class="muted" style="margin-top:12px"><strong>Notes:</strong> Bounding box width/depth includes estimated tooth protrusion, giving ~55mm each.</p>
+    </div>
+
+</div>
+</body>
+</html>

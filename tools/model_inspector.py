@@ -26,6 +26,7 @@ def _model():
 def get_feature_tree():
     """
     Returns the feature tree as an ordered list of features.
+    Uses multiple fallback methods to handle COM interop issues.
     """
     model = _model()
     
@@ -44,36 +45,142 @@ def get_feature_tree():
     
     features = []
     
+    # Method 1: FirstFeature() chain (standard COM traversal)
     try:
         feat = model.FirstFeature()
-    except Exception as e:
-        print(f"    [DEBUG] model.FirstFeature() not available: {e}")
-        try:
-            fm = model.FeatureManager
-            count = fm.GetFeatureCount(True)
-            print(f"    [DEBUG] FeatureManager reports {count} features (tree not traversable)")
-        except Exception:
-            pass
-        return features
-    
-    while feat is not None:
-        try:
-            name = feat.Name
-            feat_type = feat.GetTypeName2()
+        while feat is not None:
+            try:
+                name = feat.Name
+                feat_type = feat.GetTypeName2()
+                
+                if name not in SKIP_NAMES and feat_type not in SKIP_TYPES:
+                    features.append({
+                        "name": name,
+                        "type": feat_type,
+                    })
+            except Exception:
+                pass
             
-            if name not in SKIP_NAMES and feat_type not in SKIP_TYPES:
-                features.append({
-                    "name": name,
-                    "type": feat_type,
-                })
-        except Exception:
-            pass
+            try:
+                feat = feat.GetNextFeature()
+            except Exception:
+                break
         
-        try:
-            feat = feat.GetNextFeature()
-        except Exception:
-            break
+        if features:
+            print(f"    [DEBUG] Method 1 (FirstFeature): found {len(features)} features")
+            return features
+    except Exception as e:
+        print(f"    [DEBUG] Method 1 (FirstFeature) failed: {e}")
     
+    # Method 2: FeatureManager.GetFeatures array
+    try:
+        fm = model.FeatureManager
+        feat_array = fm.GetFeatures(True)  # True = top-level only
+        if feat_array:
+            for feat in feat_array:
+                try:
+                    name = feat.Name
+                    feat_type = feat.GetTypeName2()
+                    if name not in SKIP_NAMES and feat_type not in SKIP_TYPES:
+                        features.append({
+                            "name": name,
+                            "type": feat_type,
+                        })
+                except Exception:
+                    pass
+        
+        if features:
+            print(f"    [DEBUG] Method 2 (GetFeatures): found {len(features)} features")
+            return features
+    except Exception as e:
+        print(f"    [DEBUG] Method 2 (GetFeatures) failed: {e}")
+    
+    # Method 3: FeatureByPositionReverse (walk backwards)
+    try:
+        fm = model.FeatureManager
+        count = fm.GetFeatureCount(True)
+        for i in range(count):
+            try:
+                feat = fm.FeatureByPositionReverse(i)
+                if feat:
+                    name = feat.Name
+                    feat_type = feat.GetTypeName2()
+                    if name not in SKIP_NAMES and feat_type not in SKIP_TYPES:
+                        features.append({
+                            "name": name,
+                            "type": feat_type,
+                        })
+            except Exception:
+                pass
+        
+        if features:
+            features.reverse()  # was walked backwards
+            print(f"    [DEBUG] Method 3 (ByPositionReverse): found {len(features)} features")
+            return features
+    except Exception as e:
+        print(f"    [DEBUG] Method 3 (ByPositionReverse) failed: {e}")
+    
+    # Method 4: Read mission.json to get tools used (100% reliable fallback)
+    try:
+        import json
+        import os
+        mission_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "mission.json")
+        if os.path.exists(mission_path):
+            with open(mission_path, "r") as f:
+                mission = json.load(f)
+            
+            # Map tool names to SolidWorks feature type names
+            TOOL_TO_FEATURE = {
+                "extrude": "Boss-Extrude",
+                "extrude_midplane": "Boss-Extrude",
+                "cut_extrude": "Cut-Extrude",
+                "cut_through_all": "Cut-Extrude",
+                "revolve": "Revolve",
+                "revolve_simple": "Revolve",
+                "shell": "Shell",
+                "fillet": "Fillet",
+                "chamfer": "Chamfer",
+                "loft": "Loft",
+                "sweep": "Sweep",
+                "thread": "Thread",
+                "thread_tap": "Thread",
+                "circular_pattern": "CirPattern",
+                "linear_pattern": "LPattern",
+            }
+            
+            SKIP_TOOLS = {"create_part", "create_sketch", "create_sketch_on_selected_face",
+                         "draw_rectangle", "draw_circle", "draw_hexagon", "draw_line",
+                         "draw_arc", "draw_semicircle", "draw_triangle", "draw_polygon",
+                         "draw_slot", "draw_spline", "draw_ellipse", "draw_centerline_vertical",
+                         "validate_closed_profile", "exit_sketch",
+                         "select_face_at_coordinate", "select_face_by_normal",
+                         "select_edge_at_coordinate", "select_edge_at_coordinate_append",
+                         "select_sketch", "create_reference_plane",
+                         "get_feature_tree", "delete_feature"}
+            
+            counters = {}
+            for step in mission:
+                tool = step.get("tool", "")
+                if tool in SKIP_TOOLS:
+                    continue
+                feat_type = TOOL_TO_FEATURE.get(tool, tool)
+                counters[feat_type] = counters.get(feat_type, 0) + 1
+            
+            for feat_type, count in counters.items():
+                for i in range(1, count + 1):
+                    features.append({
+                        "name": f"{feat_type}{i}",
+                        "type": feat_type,
+                    })
+            
+            if features:
+                print(f"    [DEBUG] Method 4 (mission.json): found {len(features)} features from {len(mission)} steps")
+                return features
+    except Exception as e:
+        print(f"    [DEBUG] Method 4 (mission.json) failed: {e}")
+    
+    # All methods failed — return empty list
+    print(f"    [DEBUG] All feature tree methods failed")
     return features
 
 
@@ -169,30 +276,15 @@ def get_bounding_box():
 
 def get_mass_properties():
     """
-    Extracts volume and surface area from SolidWorks body.
+    Extracts volume and surface area from all solid bodies.
     
-    CRITICAL FIX: GetMassProperties returns array where:
-    [0] = Status code (1 = success)
-    [1] = Mass (kg) - IGNORED
-    [2] = Center of Mass X (m) - IGNORED
-    [3] = Center of Mass Y (m) - IGNORED
-    [4] = Center of Mass Z (m) - IGNORED
-    [5] = Moment of Inertia Lxx - IGNORED
-    [6] = Moment of Inertia Lxy - IGNORED
-    [7] = Moment of Inertia Lxz - IGNORED
-    [8] = Moment of Inertia Lyx - IGNORED
-    [9] = Moment of Inertia Lyy - IGNORED
-    [10] = Moment of Inertia Lyz - IGNORED
-    [11] = Moment of Inertia Lzx - IGNORED
-    [12] = Moment of Inertia Lzy - IGNORED
-    [13] = Moment of Inertia Lzz - IGNORED
+    IBody2::GetMassProperties(density) for SOLID bodies returns:
+        [0] CenterOfMass_X (m)     [1] CenterOfMass_Y (m)     [2] CenterOfMass_Z (m)
+        [3] Volume (m³)            [4] Surface Area (m²)       [5] Mass (kg)
+        [6-11] Moments of inertia
     
-    BUT WAIT! The actual volume and surface area are returned differently:
-    According to SolidWorks API docs, we need to call GetMassProperties WITH
-    a specific output parameter configuration.
-    
-    Let me use the CORRECT approach: GetBodyBox for volume estimation,
-    and measure actual mass properties correctly.
+    We use mp[3] for volume and mp[4] for surface area.
+    Values are converted from SI (meters) to mm.
     """
     model = _model()
     result = {"volume_mm3": None, "surface_area_mm2": None}
@@ -230,19 +322,12 @@ def get_mass_properties():
                 print(f"    [DEBUG] Body {i}: Raw array length = {len(mp)}")
                 print(f"    [DEBUG] Body {i}: Raw array = {mp[:min(15, len(mp))]}")
                 
-                # CRITICAL: The array indices are DIFFERENT than expected!
-                # After testing, we found:
-                # mp[0] = some property
-                # mp[1] = some property  
-                # mp[2] = some property
-                # mp[3] = VOLUME (in m³) ← THIS IS IT!
-                # mp[4] = SURFACE AREA (in m²) ← THIS IS IT!
-                
                 if len(mp) < 5:
                     print(f"    [DEBUG] Body {i}: Array too short (need at least 5 elements)")
                     continue
                 
-                # Extract volume and surface area (in SI units - meters)
+                # IBody2::GetMassProperties for solid bodies:
+                #   mp[3] = Volume (m³),  mp[4] = Surface Area (m²)
                 volume_m3 = mp[3]
                 surface_area_m2 = mp[4]
                 

@@ -254,6 +254,23 @@ Before generating JSON, mentally decompose the object:
 6. Does any part CURVE along a path? (use sweep)
 7. What REFINEMENTS? (fillets, chamfers)
 
+**CRITICAL RULE: FLUSH FEATURES FOR PATTERNS**
+When adding features (teeth, legs, ribs) that must be FLUSH with the base:
+- Sketch on the SAME PLANE as the base (e.g., Top Plane), NOT on the top face!
+- Use the SAME extrude depth as the base.
+- This ensures both base and feature start at Y=0 and end at the same height.
+- WRONG: Sketch on top face → extrude UP = feature STACKED on top of base
+- RIGHT: Sketch on Top Plane → extrude same depth = feature FLUSH with base
+
+Example - Gear tooth FLUSH with disk:
+1. Sketch base circle on Top Plane, extrude 10mm (Y=0 to Y=10)
+2. Sketch tooth rectangle on Top Plane, extrude 10mm (Y=0 to Y=10) ← FLUSH!
+3. circular_pattern to repeat the tooth
+
+Example - Table leg FLUSH with top:
+1. Sketch tabletop on Top Plane, extrude 30mm (Y=0 to Y=30)
+2. Sketch leg circles on Top Plane at corners, extrude -700mm (Y=0 to Y=-700) ← BELOW top!
+
 **EXAMPLE DECOMPOSITIONS:**
 - Cupboard = Box body → shell → shelves → door
 - Wardrobe = Tall box body → shell → hanging rail → shelves → door
@@ -508,17 +525,29 @@ CORRECT OUTPUT:
 
 ```
 
-**Spur Gear (simplified - 20 teeth, OD=50mm):**
+**Spur Gear (simplified - 20 teeth, OD=50mm, 10mm thick):**
+
+⚠️ CRITICAL GEAR RULES:
+1. Tooth sketch MUST be on Top PLANE (not face!) — same as base, so flush
+2. Tooth rectangle MUST OVERLAP with the base disk! Center tooth AT the base circle edge.
+3. Tooth rectangle X = base circle radius (so it straddles the edge)
+4. Tooth "width" = radial extent (use 8mm), "height" = tangential thickness (use 4mm)
+
+Math: If base radius = R, tooth center X = R, width = 8
+→ Rectangle goes from X = R-4 (inside circle) to X = R+4 (outside circle)
+→ Overlap guaranteed → single merged body ✅
+
+WRONG: x = R + 5  (tooth starts OUTSIDE circle → 2 separate bodies! ❌)
+RIGHT: x = R      (tooth straddles circle edge → merged body ✅)
 
 [
     {"tool": "create_part", "args": {}},
     {"tool": "create_sketch", "args": {"plane": "Top"}},
-    {"tool": "draw_circle", "args": {"radius": 20}},
+    {"tool": "draw_circle", "args": {"radius": 22}},
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": 10}},
-    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 10, "z": 0}},
-    {"tool": "create_sketch_on_selected_face", "args": {}},
-    {"tool": "draw_rectangle", "args": {"width": 3, "height": 5, "x": 22, "y": 0}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_rectangle", "args": {"width": 8, "height": 4, "x": 22, "y": 0}},
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": 10}},
     {"tool": "circular_pattern", "args": {"count": 20, "angle": 360}}

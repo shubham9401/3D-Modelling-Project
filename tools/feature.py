@@ -359,19 +359,63 @@ def sweep():
     
     feat_count_before = fm.GetFeatureCount(True)
     
-    # STRATEGY 1: Modern CreateFeature (The method you were using)
-    # We keep this but catch the failure.
+    # STRATEGY 1: InsertProtrusionSweep2 (most reliable for modern SW)
     try:
-        print("    DEBUG: Attempting Strategy 1 (CreateFeature)...")
+        print("    DEBUG: Attempting Strategy 1 (InsertProtrusionSweep2)...")
+        # Parameters: (Propagate, Alignment, TwistCtrl, MergeBodies, 
+        #              AlignWithEndFaces, AdvancedSmoothing, StartMatchingType,
+        #              EndMatchingType, IsThinBody, Thickness1, Thickness2)
+        result = fm.InsertProtrusionSweep2(
+            False,  # Propagate
+            0,      # Alignment (0 = None/FollowPath)
+            0,      # TwistCtrl (0 = Follow Path)
+            True,   # MergeBodies
+            False,  # AlignWithEndFaces
+            False,  # AdvancedSmoothing
+            0,      # StartMatchingType
+            0,      # EndMatchingType
+            False,  # IsThinBody
+            0,      # Thickness1
+            0       # Thickness2
+        )
+        feat_count_after = fm.GetFeatureCount(True)
+        if feat_count_after > feat_count_before:
+            model.ForceRebuild3(True)
+            return "Sweep created (InsertProtrusionSweep2)"
+        print("    DEBUG: Strategy 1 returned but no new feature created")
+    except Exception as e:
+        print(f"    DEBUG: Strategy 1 failed: {e}")
+    
+    # STRATEGY 2: InsertProtrusionSweep with varying param counts
+    for param_set_name, params in [
+        ("7 params", (False, False, 0, False, False, 0, 0)),
+        ("4 params", (False, 0, 0, False)),
+        ("5 params", (False, 0, 0, False, True)),
+        ("3 params", (False, 0, 0)),
+    ]:
+        try:
+            print(f"    DEBUG: Attempting Strategy 2 ({param_set_name})...")
+            fm.InsertProtrusionSweep(*params)
+            feat_count_after = fm.GetFeatureCount(True)
+            if feat_count_after > feat_count_before:
+                model.ForceRebuild3(True)
+                return f"Sweep created ({param_set_name})"
+        except Exception as e:
+            print(f"    DEBUG: Strategy 2 ({param_set_name}) failed: {e}")
+    
+    # STRATEGY 3: CreateFeature with SweepFeatureData
+    try:
+        print("    DEBUG: Attempting Strategy 3 (CreateFeature scan)...")
         sweep_type_id = None
-        # Scan for sweep type ID
-        for type_id in range(0, 200):
+        for type_id in range(0, 250):
             try:
                 swFeatData = fm.CreateDefinition(type_id)
                 if swFeatData is not None:
                     try:
+                        # Check if this is a sweep definition
                         _ = swFeatData.PathAlignmentType
                         sweep_type_id = type_id
+                        print(f"    DEBUG: Found sweep type ID: {type_id}")
                         break
                     except:
                         pass
@@ -380,41 +424,58 @@ def sweep():
         
         if sweep_type_id is not None:
             swFeatData = fm.CreateDefinition(sweep_type_id)
-            # Minimal properties to avoid conflicts
-            swFeatData.Merge = True
-            swFeatData.AutoSelect = True
+            try:
+                swFeatData.Merge = True
+            except:
+                pass
+            try:
+                swFeatData.AutoSelect = True
+            except:
+                pass
             
             result = fm.CreateFeature(swFeatData)
-            
-            # Check if it worked
             if result is not None:
-                print("    DEBUG: CreateFeature success.")
                 model.ForceRebuild3(True)
-                return "Sweep created: profile swept along path"
+                return "Sweep created (CreateFeature)"
+            
+            feat_count_after = fm.GetFeatureCount(True)
+            if feat_count_after > feat_count_before:
+                model.ForceRebuild3(True)
+                return "Sweep created (CreateFeature)"
     except Exception as e:
-        print(f"    DEBUG: Strategy 1 failed: {e}")
-
-    # STRATEGY 2: Legacy InsertProtrusionSweep (The "Macro" way)
-    # This is often more reliable for simple sweeps.
-    print("    DEBUG: CreateFeature failed/returned None. Attempting Strategy 2 (InsertProtrusionSweep)...")
+        print(f"    DEBUG: Strategy 3 failed: {e}")
+    
+    # STRATEGY 4: Try InsertProtrusionSweep3 (some SW versions)
     try:
-        # InsertProtrusionSweep(Propagate, Alignment, Twist, Merge)
-        # False = No Propagate, 0 = Default Align, 0 = No Twist, False = No Merge (SW defaults often handle this)
-        # We try this simple signature first.
-        res = fm.InsertProtrusionSweep(False, 0, 0, False)
-        
-        # Check feature count to verify success
+        print("    DEBUG: Attempting Strategy 4 (InsertProtrusionSweep3)...")
+        result = fm.InsertProtrusionSweep3(
+            False,  # Propagate  
+            False,  # IsThinBody
+            0,      # ThinType
+            0,      # Thickness1
+            0,      # Thickness2
+            0,      # TwistCtrl
+            0,      # PathAlignmentType
+            True,   # MergeSmooth
+            0,      # TwistAngle
+            False,  # AdvancedSmoothing
+            0,      # StartMatchingType
+            0,      # EndMatchingType
+            False,  # AlignWithEndFaces
+            True,   # UseFeatScope
+            True    # UseAutoSelect
+        )
         feat_count_after = fm.GetFeatureCount(True)
         if feat_count_after > feat_count_before:
             model.ForceRebuild3(True)
-            return "Sweep created (Legacy method)"
-            
+            return "Sweep created (InsertProtrusionSweep3)"
     except Exception as e:
-        print(f"    DEBUG: Strategy 2 failed: {e}")
-
+        print(f"    DEBUG: Strategy 4 failed: {e}")
+    
     # Final Check
     feat_count_after = fm.GetFeatureCount(True)
     if feat_count_after > feat_count_before:
+        model.ForceRebuild3(True)
         return "Sweep created"
         
     raise Exception("Sweep creation failed. Make sure profile (mark=1) and path (mark=4) sketches are selected and intersect.")
@@ -725,7 +786,10 @@ def linear_pattern(count, spacing):
 
 def circular_pattern(count, angle=360):
     """
-    Circular pattern - patterns the LAST feature around the origin axis.
+    Circular pattern - patterns the LAST feature around the Y-axis (vertical).
+    
+    Creates a reference axis through the origin if needed, then patterns
+    the last extrude/cut feature around it.
     
     Args:
         count: Number of instances (including original)
@@ -736,83 +800,147 @@ def circular_pattern(count, angle=360):
     fm = _fm()
     nothing = get_nothing()
     
-    print(f"    DEBUG: Looking for last extrude feature...")
+    print(f"    DEBUG: Circular pattern: {count} instances over {angle}°")
     
+    feat_count_before = fm.GetFeatureCount(True)
+    
+    # NOTE: We select the cylindrical face of the base body as axis reference
+    # in STEP 3 below (via SelectByRay). No need to find/create named axes.
+    
+    # ══════════════════════════════════════════════════════════════
+    # STEP 2: Find the LAST feature to pattern
+    # ══════════════════════════════════════════════════════════════
     last_feature_name = None
     
-    # Strategy 1: Try SelectByID2 with common feature names (most reliable)
-    # Try in reverse order so we get the LAST extrude
+    # Try common feature names — DESCENDING order, BREAK on first match
     common_names = [
-        "Cut-Extrude3", "Boss-Extrude3", "Cut-Extrude2", "Boss-Extrude2",
-        "Cut-Extrude1", "Boss-Extrude1", "Extrude2", "Extrude1",
+        "Boss-Extrude10", "Boss-Extrude9", "Boss-Extrude8", "Boss-Extrude7",
+        "Boss-Extrude6", "Boss-Extrude5", "Boss-Extrude4", "Boss-Extrude3",
+        "Boss-Extrude2",
+        "Cut-Extrude10", "Cut-Extrude9", "Cut-Extrude8", "Cut-Extrude7",
+        "Cut-Extrude6", "Cut-Extrude5", "Cut-Extrude4", "Cut-Extrude3",
+        "Cut-Extrude2", "Cut-Extrude1",
+        "Sweep1", "Revolve1", "Loft1",
+        "Boss-Extrude1",
     ]
     
     for name in common_names:
         try:
-            if model.Extension.SelectByID2(name, "BODYFEATURE", 0, 0, 0, False, 4, nothing, 0):
+            if model.Extension.SelectByID2(name, "BODYFEATURE", 0, 0, 0, False, 0, nothing, 0):
                 last_feature_name = name
-                print(f"    DEBUG: Found by name: '{name}'")
-                # Don't break - keep looking for higher-numbered features
+                print(f"    DEBUG: Feature found: '{name}'")
+                model.ClearSelection2(True)
+                break  # Take first match = highest numbered = LAST created
         except:
             pass
     
-    # Strategy 2: If no common name worked, try FirstFeature traversal (may fail on some COM objects)
     if last_feature_name is None:
-        try:
-            feat = model.FirstFeature()
-            while feat is not None:
-                try:
-                    feat_type = feat.GetTypeName2()
-                    feat_name = feat.Name
-                    if "Extrusion" in feat_type or "Boss" in feat_type or "extrude" in feat_type.lower():
-                        last_feature_name = feat_name
-                        print(f"    DEBUG: Found extrude: '{feat_name}' (type: {feat_type})")
-                except:
-                    pass
-                try:
-                    feat = feat.GetNextFeature()
-                except:
-                    break
-        except Exception as e:
-            print(f"    DEBUG: FirstFeature traversal failed: {e}")
+        raise Exception("No feature found to pattern!")
     
-    if last_feature_name is None:
-        raise Exception("No extrude/cut feature found to pattern!")
+    print(f"    DEBUG: Will pattern '{last_feature_name}' using cylindrical face as axis")
     
-    print(f"    DEBUG: Selecting feature '{last_feature_name}' for circular pattern...")
-    
-    # Select the feature
+    # ══════════════════════════════════════════════════════════════
+    # STEP 3: Select feature (mark=4) and axis (mark=1), then execute
+    # ══════════════════════════════════════════════════════════════
     model.ClearSelection2(True)
-    result = model.Extension.SelectByID2(last_feature_name, "BODYFEATURE", 0, 0, 0, False, 4, nothing, 0)
     
-    if not result:
-        print(f"    DEBUG: BODYFEATURE selection failed, trying SOLIDBODY...")
-        result = model.Extension.SelectByID2(last_feature_name, "SOLIDBODY", 0, 0, 0, False, 4, nothing, 0)
+    # Select the feature to pattern (mark = 4)
+    feat_selected = model.Extension.SelectByID2(
+        last_feature_name, "BODYFEATURE", 0, 0, 0, False, 4, nothing, 0
+    )
+    print(f"    DEBUG: Feature selection: {feat_selected}")
     
-    # Select the Y-axis (vertical) for circular pattern axis
-    # Mark = 1 for axis
-    axis_result = model.Extension.SelectByID2("Y Axis", "AXIS", 0, 0, 0, True, 1, nothing, 0)
-    if not axis_result:
-        print(f"    DEBUG: Y Axis selection failed, trying alternatives...")
-        # Try other axis names
-        model.Extension.SelectByID2("Axis1", "AXIS", 0, 0, 0, True, 1, nothing, 0)
+    # Select the CYLINDRICAL FACE of the base body as axis reference (mark=1, append=True)
+    # When you select a cylindrical face for circular pattern, SolidWorks
+    # automatically uses the cylinder's central axis. This is the ONLY reliable method.
+    axis_selected = False
+    
+    # Get bounding box to know the part height and radius for ray targeting
+    try:
+        box = model.GetPartBox()
+        if box:
+            # box = [xmin, ymin, zmin, xmax, ymax, zmax] in meters
+            mid_y = (box[1] + box[4]) / 2  # mid-height
+            max_x = box[3]  # rightmost edge
+            max_z = box[5]  # front edge
+            print(f"    DEBUG: BBox mid_y={mid_y*1000:.1f}mm, max_x={max_x*1000:.1f}mm")
+        else:
+            mid_y = 0.005  # default 5mm
+            max_x = 0.03   # default 30mm
+            max_z = 0.03
+    except:
+        mid_y = 0.005
+        max_x = 0.03
+        max_z = 0.03
+    
+    # Try selecting the cylindrical face from multiple directions
+    ray_attempts = [
+        # (origin_x, origin_y, origin_z, dir_x, dir_y, dir_z, description)
+        (max_x + 0.01, mid_y, 0, -1, 0, 0, "from +X"),      # From right side
+        (-max_x - 0.01, mid_y, 0, 1, 0, 0, "from -X"),       # From left side  
+        (0, mid_y, max_z + 0.01, 0, 0, -1, "from +Z"),        # From front
+        (0, mid_y, -max_z - 0.01, 0, 0, 1, "from -Z"),        # From back
+    ]
+    
+    for ox, oy, oz, dx, dy, dz, desc in ray_attempts:
+        try:
+            axis_selected = model.Extension.SelectByRay(
+                ox, oy, oz,    # Ray origin (outside the part)
+                dx, dy, dz,    # Ray direction (toward center)
+                0.001,         # Radius
+                2,             # Type: 2 = FACE
+                True,          # Append to existing selection  
+                1,             # Mark = 1 (axis reference for pattern)
+                0              # Option
+            )
+            if axis_selected:
+                print(f"    DEBUG: Cylindrical face selected {desc} ✅")
+                break
+        except Exception as e:
+            print(f"    DEBUG: Ray {desc} failed: {e}")
+    
+    # Fallback: try named axis entities (rarely works but worth trying)
+    if not axis_selected:
+        for fallback in ["Axis1", "Axis2", "Y Axis"]:
+            try:
+                axis_selected = model.Extension.SelectByID2(
+                    fallback, "AXIS", 0, 0, 0, True, 1, nothing, 0
+                )
+                if axis_selected:
+                    print(f"    DEBUG: Named axis '{fallback}' selected")
+                    break
+            except:
+                pass
+    
+    if not feat_selected:
+        raise Exception(f"Failed to select feature '{last_feature_name}' for pattern")
+    if not axis_selected:
+        raise Exception("Failed to select cylindrical face or axis for circular pattern.")
     
     # Execute circular pattern
-    try:
-        print(f"    DEBUG: Executing FeatureCircularPattern4...")
-        fm.FeatureCircularPattern4(
-            count,              # Number of instances
-            math.radians(angle), # Angle (radians)
-            False,              # Flip direction
-            "",                 # Seed component config
-            False,              # Same spacing
-            True                # Geometry pattern
-        )
-    except Exception as e:
-        print(f"    DEBUG: FeatureCircularPattern4 failed: {e}, trying FeatureCircularPattern3...")
-        fm.FeatureCircularPattern3(count, math.radians(angle), False, "", False, True)
+    for strategy_name, strategy_fn in [
+        ("FeatureCircularPattern4", lambda: fm.FeatureCircularPattern4(
+            count, math.radians(angle), False, "", False, True
+        )),
+        ("FeatureCircularPattern3", lambda: fm.FeatureCircularPattern3(
+            count, math.radians(angle), False, "", False, True
+        )),
+    ]:
+        try:
+            print(f"    DEBUG: Trying {strategy_name}...")
+            strategy_fn()
+            
+            feat_count_after = fm.GetFeatureCount(True)
+            if feat_count_after > feat_count_before:
+                model.ForceRebuild3(True)
+                print(f"    DEBUG: {strategy_name} SUCCESS! Features: {feat_count_before} → {feat_count_after}")
+                return f"Circular pattern: {count} instances over {angle}°"
+            else:
+                print(f"    DEBUG: {strategy_name} returned OK but no new feature created")
+        except Exception as e:
+            print(f"    DEBUG: {strategy_name} failed: {e}")
     
-    return f"Circular pattern: {count} instances over {angle}°"
+    raise Exception(f"Circular pattern failed. Feature and axis were selected but pattern creation failed.")
 
 def mirror_feature():
     """Mirror feature."""

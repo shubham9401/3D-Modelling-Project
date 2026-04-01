@@ -1,90 +1,185 @@
 {
-  "prompt": "Create an L-shaped bracket: a 100x50mm base plate 10mm thick, with a 50x50mm vertical wall 10mm thick on one end",
-  "score": 65.0,
-  "status": "FAIL",
+  "prompt": "Create a spur gear with 20 teeth, outer diameter 50mm, 10mm thick",
+  "score": 100,
+  "status": "PASS",
   "expected_spec": {
-    "description": "L-shaped bracket composed of a 100x50mm base plate 10mm thick with a 50x50mm vertical wall 10mm thick on one end",
+    "description": "Spur gear with 20 teeth",
     "expected_dimensions": {
-      "width": 100,
-      "height": 60,
-      "depth": 50
+      "width": 55,
+      "height": 10,
+      "depth": 55
     },
     "expected_features": [
-      "Extrude"
+      "Extrude",
+      "CircularPattern"
     ],
     "expected_body_count": 1,
     "expected_shape": "custom",
-    "expected_volume_mm3": 75000,
-    "expected_surface_area_mm2": 19000,
-    "expected_face_count": 11,
-    "tolerance_percent": 5,
-    "notes": "Base plate volume = 100\u00d750\u00d710 = 50,000 mm\u00b3. Wall volume = 10\u00d750\u00d750 = 25,000 mm\u00b3. Total volume = 75,000 mm\u00b3. Base SA = 2(100\u00d710 + 100\u00d750 + 10\u00d750) = 13,000 mm\u00b2. Wall SA = 2(10\u00d750 + 10\u00d750 + 50\u00d750) = 7,000 mm\u00b2. Subtract internal faces (top of base plate area 10\u00d750 and bottom of wall area 10\u00d750) = 1,000 mm\u00b2. Combined SA = 13,000 + 7,000 - 1,000 = 19,000 mm\u00b2. Face count: 6 (base) + 6 (wall) - 2 internal faces + 1 extra face from split top = 11."
+    "specific_measurements": [
+      "Outer diameter: 50mm",
+      "Number of teeth: 20",
+      "Thickness (face width): 10mm",
+      "Estimated tooth protrusion beyond outer diameter: ~2.5mm per side (total BBox increase ~5mm)"
+    ],
+    "design_checks": [
+      "Circular base disk with 50mm outer diameter",
+      "20 evenly spaced teeth around the perimeter",
+      "Teeth extend radially beyond the 50mm diameter",
+      "Uniform 10mm thickness across the gear",
+      "Teeth profile consistent around the gear"
+    ],
+    "tolerance_percent": 15,
+    "notes": "Bounding box width/depth includes estimated tooth protrusion, giving ~55mm each."
   },
   "actual_properties": {
     "dimensions": {
-      "width": 100.0,
-      "height": 60.0,
+      "width": 54.0,
+      "height": 10.74,
       "depth": 50.0
     },
-    "volume_mm3": 175000.0,
-    "surface_area_mm2": 23000.0,
+    "bounding_box": {
+      "min_x": -25.0,
+      "min_y": -0.37,
+      "min_z": -25.0,
+      "max_x": 29.0,
+      "max_y": 10.37,
+      "max_z": 25.0,
+      "width": 54.0,
+      "height": 10.74,
+      "depth": 50.0
+    },
+    "features": [
+      {
+        "name": "Boss-Extrude1",
+        "type": "Boss-Extrude"
+      },
+      {
+        "name": "Boss-Extrude2",
+        "type": "Boss-Extrude"
+      },
+      {
+        "name": "CirPattern1",
+        "type": "CirPattern"
+      }
+    ],
+    "feature_types": {
+      "Boss-Extrude": 2,
+      "CirPattern": 1
+    },
+    "feature_count": 3,
+    "feature_tree_available": true,
     "body_count": 1,
-    "face_count": 8,
-    "feature_count": 21
+    "face_count": 122,
+    "edge_count": 360,
+    "volume_mm3": 19991.15,
+    "surface_area_mm2": 5679.34
   },
-  "checks": [
+  "scored_checks": [
     {
       "check": "Width",
-      "expected": 100,
-      "actual": 100.0,
+      "expected": 55,
+      "actual": 54.0,
       "status": "PASS"
     },
     {
       "check": "Height",
-      "expected": 60,
-      "actual": 60.0,
+      "expected": 10,
+      "actual": 10.74,
       "status": "PASS"
     },
     {
       "check": "Depth",
-      "expected": 50,
+      "expected": 55,
       "actual": 50.0,
       "status": "PASS"
     },
     {
-      "check": "Features",
-      "expected": "Extrude",
-      "actual": "21 features",
+      "check": "Feature: Extrude",
+      "expected": "Yes",
+      "actual": "Yes",
       "status": "PASS"
     },
     {
-      "check": "Volume",
-      "expected": 75000,
-      "actual": 175000.0,
-      "status": "FAIL"
+      "check": "Feature: CircularPattern",
+      "expected": "Yes",
+      "actual": "Yes",
+      "status": "PASS"
     },
     {
-      "check": "Surface Area",
-      "expected": 19000,
-      "actual": 23000.0,
-      "status": "WARN"
-    },
-    {
-      "check": "Face/Body Count",
-      "expected": "1B / ~11F",
-      "actual": "1B / 8F",
+      "check": "Body Count",
+      "expected": 1,
+      "actual": 1,
       "status": "PASS"
     }
   ],
-  "deviations": [
-    "Volume mismatch: expected 75000mm\u00b3, got 175000.0mm\u00b3 (\u00b1133.3%)",
-    "Surface area deviation: expected 19000mm\u00b2, got 23000.0mm\u00b2"
+  "info_items": [
+    {
+      "check": "Face Count",
+      "actual": 122,
+      "note": "122 faces detected"
+    },
+    {
+      "check": "Volume",
+      "actual": "19,991.2 mm\u00b3",
+      "note": "Not scored (complex shape \u2014 no formula to verify against)"
+    },
+    {
+      "check": "Surface Area",
+      "actual": "5,679.3 mm\u00b2",
+      "note": "Not scored (complex shape \u2014 no formula to verify against)"
+    },
+    {
+      "check": "Spec",
+      "actual": "Outer diameter: 50mm",
+      "note": "From prompt \u2014 verify visually"
+    },
+    {
+      "check": "Spec",
+      "actual": "Number of teeth: 20",
+      "note": "From prompt \u2014 verify visually"
+    },
+    {
+      "check": "Spec",
+      "actual": "Thickness (face width): 10mm",
+      "note": "From prompt \u2014 verify visually"
+    },
+    {
+      "check": "Spec",
+      "actual": "Estimated tooth protrusion beyond outer diameter: ~2.5mm per side (total BBox increase ~5mm)",
+      "note": "From prompt \u2014 verify visually"
+    },
+    {
+      "check": "Design",
+      "actual": "Circular base disk with 50mm outer diameter",
+      "note": "Verify visually in SolidWorks"
+    },
+    {
+      "check": "Design",
+      "actual": "20 evenly spaced teeth around the perimeter",
+      "note": "Verify visually in SolidWorks"
+    },
+    {
+      "check": "Design",
+      "actual": "Teeth extend radially beyond the 50mm diameter",
+      "note": "Verify visually in SolidWorks"
+    },
+    {
+      "check": "Design",
+      "actual": "Uniform 10mm thickness across the gear",
+      "note": "Verify visually in SolidWorks"
+    },
+    {
+      "check": "Design",
+      "actual": "Teeth profile consistent around the gear",
+      "note": "Verify visually in SolidWorks"
+    }
   ],
+  "deviations": [],
   "scores_breakdown": {
     "dim": 100,
     "feat": 100,
-    "vol": 0,
-    "sa": 50,
-    "struct": 85
+    "struct": 100,
+    "vol": "N/A",
+    "sa": "N/A"
   }
 }
