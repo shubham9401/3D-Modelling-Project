@@ -359,6 +359,51 @@ def draw_rectangle(width, height, x=0, y=0):
     
     return f"Rectangle {width}x{height}mm drawn (centered)"
 
+def draw_trapezoid(base_width, tip_width, height, x=0, y=0):
+    """
+    Draws a trapezoid centered at (x, y). Used for realistic tapered gear teeth.
+    
+    The trapezoid has:
+    - base_width: wider side (at the tooth root / inner edge)
+    - tip_width: narrower side (at the tooth tip / outer edge)
+    - height: radial extent (from inner to outer edge)
+    - x, y: center position
+    
+    Orientation: height extends in X direction (radial), base/tip widths in Y direction (tangential).
+    The base (wider) side is at x - height/2, tip (narrower) side at x + height/2.
+    
+    Args:
+        base_width: Width of the base (root) side in mm
+        tip_width: Width of the tip (outer) side in mm  
+        height: Radial height of the trapezoid in mm
+        x: Center X coordinate in mm (default 0)
+        y: Center Y coordinate in mm (default 0)
+    """
+    _require_sketch_active()
+    
+    # Convert to meters
+    bw = base_width / 1000.0 / 2.0  # half base width
+    tw = tip_width / 1000.0 / 2.0   # half tip width
+    h = height / 1000.0 / 2.0       # half height
+    cx = x / 1000.0
+    cy = y / 1000.0
+    
+    # 4 corners of the trapezoid:
+    # Base (inner) side: wider, at x - h
+    # Tip (outer) side: narrower, at x + h
+    p1 = (cx - h, cy - bw)  # bottom-left (base)
+    p2 = (cx + h, cy - tw)  # bottom-right (tip)
+    p3 = (cx + h, cy + tw)  # top-right (tip)
+    p4 = (cx - h, cy + bw)  # top-left (base)
+    
+    sm = _sm()
+    sm.CreateLine(p1[0], p1[1], 0, p2[0], p2[1], 0)  # bottom edge (tapered)
+    sm.CreateLine(p2[0], p2[1], 0, p3[0], p3[1], 0)  # right edge (tip)
+    sm.CreateLine(p3[0], p3[1], 0, p4[0], p4[1], 0)  # top edge (tapered)
+    sm.CreateLine(p4[0], p4[1], 0, p1[0], p1[1], 0)  # left edge (base)
+    
+    return f"Trapezoid (base={base_width}, tip={tip_width}, h={height})mm drawn at ({x},{y})"
+
 def draw_circle(radius, x=0, y=0):
     """Draws a circle at (x,y). All units in mm."""
     _require_sketch_active()
@@ -573,3 +618,5 @@ def validate_closed_profile():
     # DO NOT EXIT SKETCH HERE. Features (Extrude/Revolve) work best when sketch is active.
     # The feature creation will automatically consume/close the sketch.
     return "Sketch profile validated (Sketch remains active)"
+
+    

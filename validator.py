@@ -1,11 +1,14 @@
 """
-Validator: Two-tier validation system for SolidWorks models.
+Validator: Three-tier validation system for SolidWorks models.
 
 TIER 1 (SCORED): Dimensions, Features, Structure — always reliable.
-TIER 2 (CONDITIONAL): Volume/SA — scored only for simple shapes (Python math).
+TIER 2 (SCORED): Feature Parameters — compares actual fillet radius, extrude depth,
+                  pattern count, shell thickness, etc. against expected specs.
+TIER 3 (CONDITIONAL): Volume/SA — scored only for simple shapes (Python math).
 INFO SECTION: Volume/SA for complex shapes + design checks (shown, not scored).
 
 Score is based ONLY on what can be reliably verified.
+v2.0 — Deep specific validation with feature parameter scoring.
 """
 
 import json
@@ -93,7 +96,7 @@ def _check_features(expected_features, actual_feature_types):
         "LinearPattern": ["LPattern", "LinearPattern"],
         "Hole": ["HoleWzd", "Hole", "HoleWizard"],
         "Sketch": ["ProfileFeature", "3DProfileFeature"],
-        "Thread": ["Thread", "CosmeticThread"],
+        "Thread": ["Thread", "CosmeticThread", "SweepThread"],
         "Mirror": ["MirrorPattern", "Mirror"],
         "Rib": ["Rib", "RibFeature"],
     }
@@ -117,6 +120,149 @@ def _check_features(expected_features, actual_feature_types):
 
     score = round((found / len(expected_features)) * 100) if expected_features else 100
     return score, checks
+
+
+# ============================================================
+# FEATURE PARAMETER CHECK (NEW — Deep Specific Validation)
+# ============================================================
+
+# Mapping from spec parameter names to actual extracted parameter keys
+_PARAM_KEY_MAP = {
+    "Fillet": {"radius": "radius_mm"},
+    "Chamfer": {"distance": "distance_mm", "angle": "angle_deg"},
+    "Extrude": {"depth": "depth_mm"},
+    "Cut": {"depth": "depth_mm"},
+    "Shell": {"thickness": "thickness_mm"},
+    "CircularPattern": {"count": "count"},
+    "LinearPattern": {"count": "count_dir1", "spacing": "spacing_dir1_mm"},
+    "Thread": {"diameter": "diameter_mm", "pitch": "pitch_mm", "depth": "depth_mm"},
+    "Revolve": {"angle": "angle_deg"},
+}
+
+# Mapping from spec feature_type names to actual SolidWorks type names
+_TYPE_ALIASES = {
+    "Fillet": ["Fillet", "ConstRadiusFillet", "VariableRadiusFillet"],
+    "Chamfer": ["Chamfer", "ChamferFeature"],
+    "Extrude": ["Extrusion", "ICE", "Boss-Extrude"],
+    "Cut": ["Cut", "CutExtrude", "Cut-Extrude", "ICE"],
+    "Shell": ["Shell", "ShellFeature"],
+    "CircularPattern": ["CirPattern", "CircularPattern"],
+    "LinearPattern": ["LPattern", "LinearPattern"],
+    "Thread": ["Thread", "CosmeticThread", "SweepThread"],
+    "Revolve": ["Revolution", "Revolve", "BossRevolve"],
+    "Loft": ["Loft", "LoftFeature"],
+    "Sweep": ["Sweep", "SweepFeature"],
+}
+
+
+def _check_feature_parameters(expected_params, feature_details, tolerance_pct=10):
+    """
+    Compare expected feature parameters against actual extracted values.
+    
+    Args:
+        expected_params: List of dicts from LLM spec, e.g.:
+            [{"feature_type": "Fillet", "parameter": "radius", "expected_value": 5.0}]
+        feature_details: List of dicts from model_inspector, e.g.:
+            [{"name": "Fillet1", "type": "Fillet", "parameters": {"radius_mm": 5.0}}]
+        tolerance_pct: Tolerance for numeric comparisons
+    
+    Returns:
+        (score, checks_list) where checks_list has scored check dicts
+    """
+    if not expected_params:
+        return 100, []
+    
+    checks = []
+    scores = []
+    
+    for spec in expected_params:
+        feat_type = spec.get("feature_type", "")
+        param_name = spec.get("parameter", "")
+        expected_val = spec.get("expected_value")
+        unit = spec.get("unit", "")
+        
+        if expected_val is None:
+            continue
+        
+        # Find the actual feature matching this type
+        actual_key = _PARAM_KEY_MAP.get(feat_type, {}).get(param_name)
+        sw_types = _TYPE_ALIASES.get(feat_type, [feat_type])
+        
+        # Search through feature details for a matching feature
+        actual_val = None
+        matched_feat_name = None
+        
+        for detail in feature_details:
+            if detail.get("type") in sw_types:
+                params = detail.get("parameters", {})
+                if actual_key and actual_key in params:
+                    actual_val = params[actual_key]
+                    matched_feat_name = detail.get("name", "?")
+                    break
+        
+        check_label = f"{feat_type} {param_name}"
+        expected_display = f"{expected_val}{unit}"
+        
+        if actual_val is None:
+            # Could not extract this parameter — mark as INFO (not scored)
+            checks.append({
+                "check": check_label,
+                "expected": expected_display,
+                "actual": "N/A (could not extract)",
+                "status": "INFO",
+                "note": "Parameter not readable from SolidWorks API — verify visually",
+            })
+            continue
+        
+        # Compare values
+        if isinstance(expected_val, (int, float)) and isinstance(actual_val, (int, float)):
+            if expected_val == 0:
+                match = (actual_val == 0)
+                score = 100 if match else 0
+            else:
+                error_pct = abs(actual_val - expected_val) / abs(expected_val) * 100
+                
+                if error_pct <= tolerance_pct * 0.5:
+                    score = 100
+                    status = "PASS"
+                elif error_pct <= tolerance_pct:
+                    score = 75
+                    status = "WARN"
+                elif error_pct <= tolerance_pct * 2:
+                    score = 40
+                    status = "WARN"
+                else:
+                    score = 0
+                    status = "FAIL"
+            
+            status = "PASS" if score >= 75 else ("WARN" if score >= 40 else "FAIL")
+            actual_display = f"{actual_val}{unit}"
+            if matched_feat_name:
+                actual_display += f" ({matched_feat_name})"
+            
+            scores.append(score)
+            checks.append({
+                "check": check_label,
+                "expected": expected_display,
+                "actual": actual_display,
+                "status": status,
+            })
+            
+            if status in ("WARN", "FAIL"):
+                checks[-1]["deviation"] = f"{check_label}: expected {expected_display}, got {actual_val}{unit}"
+        else:
+            # Non-numeric comparison (e.g., boolean)
+            match = (actual_val == expected_val)
+            scores.append(100 if match else 0)
+            checks.append({
+                "check": check_label,
+                "expected": str(expected_val),
+                "actual": str(actual_val),
+                "status": "PASS" if match else "FAIL",
+            })
+    
+    avg_score = sum(scores) / len(scores) if scores else 100
+    return round(avg_score), checks
 
 
 # ============================================================
@@ -157,14 +303,15 @@ def _compute_expected_sa(shape, w, h, d):
 
 
 # ============================================================
-# MAIN VALIDATION LOGIC — TWO-TIER SYSTEM
+# MAIN VALIDATION LOGIC — THREE-TIER SYSTEM
 # ============================================================
 
 def validate_model(spec, actual_properties):
     """
-    Two-tier validation:
-      TIER 1 (always scored): Dimensions (30%), Features (30%), Structure (15%)
-      TIER 2 (scored if computable): Volume (15%), Surface Area (10%)
+    Three-tier validation:
+      TIER 1 (always scored): Dimensions (25%), Features (15%), Structure (10%)
+      TIER 2 (scored if available): Feature Parameters (25%) — deep specific checks
+      TIER 3 (scored if computable): Volume (15%), Surface Area (10%)
       INFO (never scored): Volume/SA for custom shapes, design checks
 
     Only scores what can be reliably verified.
@@ -179,7 +326,7 @@ def validate_model(spec, actual_properties):
     # TIER 1: ALWAYS SCORED
     # ════════════════════════════════════════════════════════
 
-    # ── 1A. Bounding Box Dimensions (30%) ──
+    # ── 1A. Bounding Box Dimensions (25%) ──
     dim_scores = []
     expected_dims = spec.get("expected_dimensions", {})
     actual_dims = actual_properties.get("dimensions", {})
@@ -204,7 +351,7 @@ def validate_model(spec, actual_properties):
 
     dim_avg = sum(dim_scores) / len(dim_scores) if dim_scores else 100
 
-    # ── 1B. Feature Completeness (30%) ──
+    # ── 1B. Feature Completeness (15%) ──
     expected_features = spec.get("expected_features", [])
     feature_tree_available = actual_properties.get("feature_tree_available", True)
 
@@ -230,22 +377,25 @@ def validate_model(spec, actual_properties):
             if status == "FAIL":
                 deviations.append(detail)
 
-    # ── 1C. Structure: Body & Face Count (15%) ──
+    # ── 1C. Structure: Body Count (10%) ──
     expected_bodies = spec.get("expected_body_count", 1)
     actual_bodies = actual_properties.get("body_count", 0)
     actual_faces = actual_properties.get("face_count", 0)
 
-    body_match = actual_bodies == expected_bodies
-    struct_score = 100 if body_match else 50
+    if expected_bodies is not None:
+        body_match = actual_bodies == expected_bodies
+        struct_score = 100 if body_match else 50
 
-    scored_checks.append({
-        "check": "Body Count",
-        "expected": expected_bodies,
-        "actual": actual_bodies,
-        "status": "PASS" if body_match else "FAIL",
-    })
-    if not body_match:
-        deviations.append(f"Body count: expected {expected_bodies}, got {actual_bodies}")
+        scored_checks.append({
+            "check": "Body Count",
+            "expected": expected_bodies,
+            "actual": actual_bodies,
+            "status": "PASS" if body_match else "FAIL",
+        })
+        if not body_match:
+            deviations.append(f"Body count: expected {expected_bodies}, got {actual_bodies}")
+    else:
+        struct_score = 100  # Not specified, skip
 
     # Face count: always show as info (LLM estimates are unreliable)
     info_items.append({
@@ -255,7 +405,39 @@ def validate_model(spec, actual_properties):
     })
 
     # ════════════════════════════════════════════════════════
-    # TIER 2: SCORED ONLY FOR SIMPLE SHAPES
+    # TIER 2: FEATURE PARAMETERS (DEEP SPECIFIC VALIDATION)
+    # ════════════════════════════════════════════════════════
+
+    expected_fp = spec.get("feature_parameters", [])
+    feature_details = actual_properties.get("feature_details", [])
+    
+    param_score = None  # None = not available
+    
+    if expected_fp:
+        fp_score, fp_checks = _check_feature_parameters(expected_fp, feature_details, tolerance)
+        
+        # Separate scored checks from info-only checks
+        scored_fp_checks = [c for c in fp_checks if c.get("status") != "INFO"]
+        info_fp_checks = [c for c in fp_checks if c.get("status") == "INFO"]
+        
+        if scored_fp_checks:
+            param_score = fp_score
+            for c in scored_fp_checks:
+                scored_checks.append(c)
+                dev = c.get("deviation")
+                if dev:
+                    deviations.append(dev)
+        
+        # Add unreadable parameters as info items
+        for c in info_fp_checks:
+            info_items.append({
+                "check": f"Param: {c['check']}",
+                "actual": c.get("expected", ""),
+                "note": c.get("note", "Verify visually"),
+            })
+
+    # ════════════════════════════════════════════════════════
+    # TIER 3: VOLUME/SA (SCORED ONLY FOR SIMPLE SHAPES)
     # ════════════════════════════════════════════════════════
 
     shape = spec.get("expected_shape", "custom")
@@ -362,9 +544,10 @@ def validate_model(spec, actual_properties):
     # ════════════════════════════════════════════════════════
 
     weights = {
-        "dim": 0.30,
-        "feat": 0.30,
-        "struct": 0.15,
+        "dim": 0.25,
+        "feat": 0.15,
+        "struct": 0.10,
+        "params": 0.25,   # NEW: feature parameters
         "vol": 0.15,
         "sa": 0.10,
     }
@@ -373,11 +556,12 @@ def validate_model(spec, actual_properties):
         "dim": dim_avg,
         "feat": feat_score,
         "struct": struct_score,
+        "params": param_score,    # None if no params to check
         "vol": volume_score,      # None if not scored
         "sa": sa_score,           # None if not scored
     }
 
-    # Redistribute weight from unskored categories
+    # Redistribute weight from unscored categories
     active = {k: v for k, v in scores.items() if v is not None}
     if active:
         total_weight = sum(weights[k] for k in active)
@@ -410,6 +594,14 @@ def run_validation(user_prompt):
         print(f"   ✅ Model: {dims['width']}W × {dims['height']}H × {dims['depth']}D mm, "
               f"{actual['body_count']} bodies, {actual['face_count']} faces, "
               f"{actual['feature_count']} features")
+        
+        # Show feature details summary
+        details = actual.get("feature_details", [])
+        param_features = [d for d in details if d.get("parameters")]
+        if param_features:
+            print(f"   📊 Feature parameters extracted from {len(param_features)} features:")
+            for d in param_features:
+                print(f"      • {d['name']}: {d['parameters']}")
 
         # Step 2: Extract specs from prompt
         spec = create_spec_from_prompt(user_prompt)
@@ -418,6 +610,13 @@ def run_validation(user_prompt):
             return None
 
         print(f"   📐 Expected: {spec.get('description', 'N/A')}")
+        
+        # Show expected feature params
+        fp = spec.get("feature_parameters", [])
+        if fp:
+            print(f"   🎯 Expected feature parameters ({len(fp)}):")
+            for p in fp:
+                print(f"      • {p.get('feature_type')} {p.get('parameter')}: {p.get('expected_value')}{p.get('unit', '')}")
 
         # Step 3: Compare
         print("\n📊 Comparing actual model vs expected specs...")
@@ -464,11 +663,26 @@ def _print_report(prompt, result):
 
     for c in result["scored_checks"]:
         icon = {"PASS": "✅", "WARN": "⚠️ ", "FAIL": "❌"}.get(c["status"], "  ")
-        print(f"  {icon} {c['check']}: {c.get('actual', 'N/A')}")
+        exp = c.get('expected', 'N/A')
+        act = c.get('actual', 'N/A')
+        print(f"  {icon} {c['check']}: expected={exp}, actual={act}")
 
     if result["deviations"]:
+        print("\n  Deviations:")
         for dev in result["deviations"]:
             print(f"  ❌ {dev}")
+    
+    # Show scores breakdown
+    breakdown = result.get("scores_breakdown", {})
+    labels = {"dim": "Dimensions", "feat": "Features", "struct": "Structure", 
+              "params": "Parameters", "vol": "Volume", "sa": "Surface Area"}
+    print("\n  Score Breakdown:")
+    for key, label in labels.items():
+        val = breakdown.get(key, "N/A")
+        if val == "N/A":
+            print(f"    {label}: — (not scored)")
+        else:
+            print(f"    {label}: {val}/100")
 
     print("═" * 60)
 
@@ -504,15 +718,29 @@ def _save_html_report(prompt, result, spec, actual):
     else:
         grade, grade_color = "POOR", "#ef4444"
 
-    # Build the full feature tree HTML
+    # Build the full feature tree HTML with parameters
     features = actual.get("features", [])
+    feature_details = actual.get("feature_details", [])
+    
+    # Create a lookup for feature details by name
+    detail_lookup = {}
+    for d in feature_details:
+        detail_lookup[d.get("name", "")] = d.get("parameters", {})
+    
     feature_rows = ""
     for i, f in enumerate(features, 1):
+        fname = f.get('name', 'Unknown')
+        ftype = f.get('type', 'Unknown')
+        params = detail_lookup.get(fname, {})
+        params_html = ""
+        if params:
+            params_str = ", ".join(f"{k}: {v}" for k, v in params.items())
+            params_html = f'<br><span class="param-detail">{params_str}</span>'
         feature_rows += f"""
             <tr>
                 <td>{i}</td>
-                <td><code>{f.get('name', 'Unknown')}</code></td>
-                <td><span class="badge">{f.get('type', 'Unknown')}</span></td>
+                <td><code>{fname}</code>{params_html}</td>
+                <td><span class="badge">{ftype}</span></td>
             </tr>"""
     if not features:
         feature_rows = '<tr><td colspan="3" class="muted">No features traversable</td></tr>'
@@ -551,7 +779,8 @@ def _save_html_report(prompt, result, spec, actual):
 
     # Score breakdown
     breakdown = result.get("scores_breakdown", {})
-    labels = {"dim": "Dimensions", "feat": "Features", "struct": "Structure", "vol": "Volume", "sa": "Surface Area"}
+    labels = {"dim": "Dimensions", "feat": "Features", "struct": "Structure", 
+              "params": "Feature Params", "vol": "Volume", "sa": "Surface Area"}
     breakdown_rows = ""
     for key, label in labels.items():
         val = breakdown.get(key, "N/A")
@@ -571,13 +800,20 @@ def _save_html_report(prompt, result, spec, actual):
     info_html = ""
     specs_items = [i for i in result["info_items"] if i["check"] == "Spec"]
     design_items = [i for i in result["info_items"] if i["check"] == "Design"]
-    measure_items = [i for i in result["info_items"] if i["check"] not in ("Spec", "Design")]
+    param_items = [i for i in result["info_items"] if i["check"].startswith("Param:")]
+    measure_items = [i for i in result["info_items"] if i["check"] not in ("Spec", "Design") and not i["check"].startswith("Param:")]
 
     if measure_items:
         info_html += '<h3>📊 Measured Properties</h3><table class="data-table"><tr><th>Property</th><th>Value</th><th>Note</th></tr>'
         for item in measure_items:
             info_html += f'<tr><td>{item["check"]}</td><td><strong>{item["actual"]}</strong></td><td class="muted">{item.get("note", "")}</td></tr>'
         info_html += '</table>'
+
+    if param_items:
+        info_html += '<h3>🔍 Parameters (visual verification needed)</h3><ul class="check-list">'
+        for item in param_items:
+            info_html += f'<li class="check-item spec-item">{item["check"]}: {item["actual"]} — {item.get("note", "")}</li>'
+        info_html += '</ul>'
 
     if specs_items:
         info_html += '<h3>📋 Specific Measurements (from prompt)</h3><ul class="check-list">'
@@ -626,6 +862,16 @@ def _save_html_report(prompt, result, spec, actual):
 
     # Expected spec summary
     expected_dims = spec.get("expected_dimensions", {})
+    
+    # Feature parameters expected
+    fp_expected = spec.get("feature_parameters", [])
+    fp_html = ""
+    if fp_expected:
+        fp_html = '<h3>🎯 Expected Feature Parameters</h3><table class="data-table"><tr><th>Feature</th><th>Parameter</th><th>Expected</th></tr>'
+        for fp in fp_expected:
+            fp_html += f'<tr><td>{fp.get("feature_type", "")}</td><td>{fp.get("parameter", "")}</td><td><strong>{fp.get("expected_value", "?")}{fp.get("unit", "")}</strong></td></tr>'
+        fp_html += '</table>'
+    
     exp_html = f"""
         <table class="data-table">
             <tr><th>Field</th><th>Value</th></tr>
@@ -635,7 +881,8 @@ def _save_html_report(prompt, result, spec, actual):
             <tr><td>Expected Features</td><td>{', '.join(spec.get('expected_features', []))}</td></tr>
             <tr><td>Expected Bodies</td><td>{spec.get('expected_body_count', '?')}</td></tr>
             <tr><td>Tolerance</td><td>{spec.get('tolerance_percent', 10)}%</td></tr>
-        </table>"""
+        </table>
+        {fp_html}"""
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -698,6 +945,7 @@ def _save_html_report(prompt, result, spec, actual):
 
     .muted {{ color: #64748b; font-size: 13px; }}
     .feature-tags {{ margin: 8px 0 16px; }}
+    .param-detail {{ color: #60a5fa; font-size: 12px; }}
 
     /* Two column layout */
     .two-col {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
@@ -719,7 +967,7 @@ def _save_html_report(prompt, result, spec, actual):
         <div class="score-circle">{score}</div>
         <div class="score-details">
             <div class="score-grade">{grade}</div>
-            <div class="score-note">Score based only on reliably verifiable checks. Volume/SA scored only for simple shapes with exact Python formulas.</div>
+            <div class="score-note">Score based on dimensions, feature presence, feature parameters (radius/depth/count), structure, and volume/SA (when computable).</div>
         </div>
     </div>
 

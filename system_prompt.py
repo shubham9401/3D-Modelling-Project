@@ -33,7 +33,27 @@ When creating objects with multiple similar features (legs, holes, posts), use S
 ❌ WRONG: All legs at (350,250), (450,250), (350,350), (450,350) ← all in one quadrant!
 ✅ CORRECT: Legs at (350,250), (-350,250), (350,-250), (-350,-250) ← all 4 corners!
 
-### 5. EDGE COORDINATE CALCULATION (for fillet/chamfer):
+### 5. HOLE/CUT PLACEMENT BOUNDS (CRITICAL — MUST NOT EXCEED PLATE EDGES):
+When placing holes, cuts, or circles on a plate/surface:
+- The plate extends from -W/2 to +W/2 in X and -D/2 to +D/2 in Z
+- EVERY hole center must be AT LEAST `hole_radius + 3mm` inside the plate edge!
+- Max allowed X for a hole: `W/2 - hole_radius - 3`
+- Max allowed Z for a hole: `D/2 - hole_radius - 3`
+
+**BOUNDARY CHECK (ALWAYS do this mentally before placing holes):**
+Plate 120x80mm, holes of radius 5mm:
+- X max = 120/2 - 5 - 3 = 52mm → holes X must be in range [-52, +52]
+- Z max = 80/2 - 5 - 3 = 32mm → holes Z must be in range [-32, +32]
+
+❌ WRONG: Hole at x=55 on 120mm plate → 55 + 5 = 60 = plate edge (touching/exceeding!)
+❌ WRONG: 4x3 grid from -45 to +45 on 80mm plate → 45+5=50 > 40 (OUTSIDE plate!)
+✅ CORRECT: Grid from -30 to +30, step=20 on 80mm plate → 30+5=35 < 40 (INSIDE!)
+
+For GRIDS of holes (rows×cols with spacing), use linear_pattern instead of manual placement:
+- Create ONE hole → linear_pattern(count, spacing) in both directions
+- This ensures uniform spacing and avoids mistakes.
+
+### 6. EDGE COORDINATE CALCULATION (for fillet/chamfer):
 When selecting edges on a centered WxH box extruded D mm:
 - Top edges are at Y = D (extrusion height)
 - Side edges: X = ±W/2, Z = ±H/2
@@ -527,30 +547,129 @@ CORRECT OUTPUT:
 
 **Spur Gear (simplified - 20 teeth, OD=50mm, 10mm thick):**
 
-⚠️ CRITICAL GEAR RULES:
-1. Tooth sketch MUST be on Top PLANE (not face!) — same as base, so flush
-2. Tooth rectangle MUST OVERLAP with the base disk! Center tooth AT the base circle edge.
-3. Tooth rectangle X = base circle radius (so it straddles the edge)
-4. Tooth "width" = radial extent (use 8mm), "height" = tangential thickness (use 4mm)
+⚠️ CRITICAL GEAR RULES & PROPORTIONS:
 
-Math: If base radius = R, tooth center X = R, width = 8
-→ Rectangle goes from X = R-4 (inside circle) to X = R+4 (outside circle)
-→ Overlap guaranteed → single merged body ✅
+Gear MATH (MUST follow these formulas):
+  module (m) = OD / (num_teeth + 2)
+  pitch_radius = m * num_teeth / 2
+  root_radius = pitch_radius - (1.25 * m)    ← BASE DISK radius
+  tooth_radial = 2.25 * m                     ← total radial width of tooth rectangle
+  tooth_tangential = 1.5 * m                  ← tooth thickness
+  tooth_x = root_radius + tooth_radial/2 - 1  ← center position (1mm overlap into base for merge)
 
-WRONG: x = R + 5  (tooth starts OUTSIDE circle → 2 separate bodies! ❌)
-RIGHT: x = R      (tooth straddles circle edge → merged body ✅)
+For OD=50mm, 20 teeth:
+  m = 50 / 22 = 2.27mm
+  pitch_radius = 2.27 * 10 = 22.7mm
+  root_radius = 22.7 - 2.84 = 19.9 → use 20
+  tooth_radial = 2.25 * 2.27 = 5.1 → use 5
+  tooth_tangential = 1.5 * 2.27 = 3.4 → use 3.5
+  tooth_x = 20 + 2.5 - 1 = 21.5 → use 22
+
+CRITICAL RULES:
+1. Base disk uses ROOT_RADIUS (not OD/2!) — the teeth extend outward to reach OD.
+2. Tooth sketch MUST be on Top PLANE (not face!) — same as base, so flush.
+3. Tooth rectangle inner edge OVERLAPS base by ~1mm, rest protrudes OUTWARD.
+4. Tooth X = root_radius + tooth_radial/2 - 1 (protrudes, not centered on edge!).
+5. The tooth extrude becomes Boss-Extrude2 — circular_pattern will pattern IT (not cuts!).
+
+❌ WRONG: base radius = OD/2 = 25  (teeth can't protrude, disk is already full OD!)
+❌ WRONG: tooth centered AT root_radius (half hidden inside base, teeth look tiny!)
+✅ CORRECT: base radius=20, tooth at x=22 width=5 → tooth spans 19.5 to 24.5mm, protrudes ~4.5mm!
 
 [
     {"tool": "create_part", "args": {}},
     {"tool": "create_sketch", "args": {"plane": "Top"}},
-    {"tool": "draw_circle", "args": {"radius": 22}},
+    {"tool": "draw_circle", "args": {"radius": 20}},
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": 10}},
     {"tool": "create_sketch", "args": {"plane": "Top"}},
-    {"tool": "draw_rectangle", "args": {"width": 8, "height": 4, "x": 22, "y": 0}},
+    {"tool": "draw_trapezoid", "args": {"base_width": 5, "tip_width": 2.5, "height": 5, "x": 22, "y": 0}},
     {"tool": "validate_closed_profile", "args": {}},
     {"tool": "extrude", "args": {"depth": 10}},
     {"tool": "circular_pattern", "args": {"count": 20, "angle": 360}}
+]
+
+NOTE: The Python post-processor will automatically convert draw_rectangle → draw_trapezoid for gears AND recalculate dimensions. Just ensure the STRUCTURE (circle → tooth shape → pattern) is correct.
+
+```
+
+**Water Bottle (revolve approach — realistic smooth profile, 70mm body, 26mm neck, 200mm tall):**
+
+⚠️ CRITICAL: Bottles/vases/flasks MUST use REVOLVE, NOT stacked extrusions!
+Draw a half-profile on Front plane using draw_line → revolve 360° → shell.
+The post-processor will auto-convert stacked extrusions to revolve if needed.
+
+Profile shape: bottom → body wall → shoulder taper → neck → lip → close to axis
+
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Front"}},
+    {"tool": "draw_line", "args": {"x1": 0, "y1": 0, "x2": 35, "y2": 0}},
+    {"tool": "draw_line", "args": {"x1": 35, "y1": 0, "x2": 35, "y2": 140}},
+    {"tool": "draw_line", "args": {"x1": 35, "y1": 140, "x2": 13, "y2": 170}},
+    {"tool": "draw_line", "args": {"x1": 13, "y1": 170, "x2": 13, "y2": 195}},
+    {"tool": "draw_line", "args": {"x1": 13, "y1": 195, "x2": 15, "y2": 200}},
+    {"tool": "draw_line", "args": {"x1": 15, "y1": 200, "x2": 0, "y2": 200}},
+    {"tool": "draw_line", "args": {"x1": 0, "y1": 200, "x2": 0, "y2": 0}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "revolve", "args": {"angle": 360}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 200, "z": 0}},
+    {"tool": "shell", "args": {"thickness": 2}}
+]
+
+```
+
+**Plate with Grid of Holes (120x80mm plate, 10mm thick, 4x3 grid of 5mm holes):**
+
+⚠️ BOUNDARY CHECK: Plate extends from -60 to +60 in X, -40 to +40 in Z.
+Hole radius = 5mm → holes must stay within ±55 in X and ±35 in Z.
+Grid layout: 4 columns at X: -45, -15, +15, +45 (within ±55 ✅)
+             3 rows    at Z: -25, 0, +25 (within ±35 ✅)
+
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_rectangle", "args": {"width": 120, "height": 80}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 10}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 10, "z": 0}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": -45, "y": -25}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": -15, "y": -25}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": 15, "y": -25}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": 45, "y": -25}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": -45, "y": 0}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": -15, "y": 0}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": 15, "y": 0}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": 45, "y": 0}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": -45, "y": 25}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": -15, "y": 25}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": 15, "y": 25}},
+    {"tool": "draw_circle", "args": {"radius": 5, "x": 45, "y": 25}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "cut_through_all", "args": {}}
+]
+
+```
+
+**Water Bottle (body + tapered neck using REVOLVE):**
+
+Uses revolve with a cross-section profile to create the body with curved neck.
+Bottle body Ø70mm, neck Ø25mm, total height 200mm.
+
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Front"}},
+    {"tool": "draw_centerline_vertical", "args": {}},
+    {"tool": "draw_line", "args": {"x1": 0, "y1": 0, "x2": 35, "y2": 0}},
+    {"tool": "draw_line", "args": {"x1": 35, "y1": 0, "x2": 35, "y2": 140}},
+    {"tool": "draw_line", "args": {"x1": 35, "y1": 140, "x2": 12.5, "y2": 170}},
+    {"tool": "draw_line", "args": {"x1": 12.5, "y1": 170, "x2": 12.5, "y2": 200}},
+    {"tool": "draw_line", "args": {"x1": 12.5, "y1": 200, "x2": 0, "y2": 200}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "revolve", "args": {"angle": 360}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 200, "z": 0}},
+    {"tool": "shell", "args": {"thickness": 2}}
 ]
 
 ```

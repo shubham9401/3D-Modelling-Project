@@ -185,6 +185,282 @@ def get_feature_tree():
 
 
 # ============================================================
+# DEEP FEATURE PARAMETER EXTRACTION
+# ============================================================
+
+def get_feature_details():
+    """
+    Walks the feature tree and extracts SPECIFIC PARAMETERS from each feature.
+    Uses IFeature::GetDefinition() to access feature-type-specific data.
+    
+    Returns a list of dicts, each with:
+        name, type, and a 'parameters' dict of measured values.
+    
+    Example output:
+        [
+            {"name": "Fillet1", "type": "Fillet", "parameters": {"radius_mm": 5.0, "edge_count": 4}},
+            {"name": "Boss-Extrude1", "type": "Extrusion", "parameters": {"depth_mm": 10.0}},
+            {"name": "CirPattern1", "type": "CirPattern", "parameters": {"count": 20, "angle_deg": 360}},
+        ]
+    """
+    model = _model()
+    
+    SKIP_NAMES = {
+        "Comments", "Favorites", "History", "Selection Sets",
+        "Sensors", "Design Binder", "Annotations", "Surface Bodies",
+        "Solid Bodies", "Lights, Cameras and Scene", "Equations",
+        "Material", "Front Plane", "Top Plane", "Right Plane", "Origin",
+        "Lights", "Ambient", "Directional1", "Directional2", "Directional3",
+    }
+    SKIP_TYPES = {
+        "OriginProfileFeature", "RefPlane", "OriginPoint",
+        "MateReferenceGroupFolder", "RefAxis",
+    }
+    
+    details = []
+    
+    try:
+        feat = model.FirstFeature()
+        while feat is not None:
+            try:
+                name = feat.Name
+                feat_type = feat.GetTypeName2()
+                
+                if name in SKIP_NAMES or feat_type in SKIP_TYPES:
+                    feat = feat.GetNextFeature()
+                    continue
+                
+                params = _extract_feature_params(feat, feat_type)
+                details.append({
+                    "name": name,
+                    "type": feat_type,
+                    "parameters": params,
+                })
+            except Exception:
+                pass
+            
+            try:
+                feat = feat.GetNextFeature()
+            except Exception:
+                break
+    except Exception as e:
+        print(f"    [DEBUG] Feature detail extraction failed: {e}")
+    
+    return details
+
+
+def _extract_feature_params(feat, feat_type):
+    """
+    Extract parameters from a single feature using GetDefinition().
+    Returns a dict of parameter name -> value.
+    """
+    params = {}
+    
+    try:
+        defn = feat.GetDefinition()
+        if defn is None:
+            return params
+    except Exception:
+        return params
+    
+    # ── Fillet ──
+    if feat_type in ("Fillet", "ConstRadiusFillet", "VariableRadiusFillet"):
+        try:
+            # ISimpleFilletFeatureData2
+            r = defn.DefaultRadius
+            if r is not None:
+                params["radius_mm"] = round(r * 1000, 4)
+        except Exception:
+            pass
+        try:
+            # Count edges involved
+            edges = defn.FilletEdges
+            if edges is not None and hasattr(edges, '__len__'):
+                params["edge_count"] = len(edges)
+        except Exception:
+            pass
+        try:
+            params["propagate"] = bool(defn.PropagateToTangentFaces)
+        except Exception:
+            pass
+    
+    # ── Chamfer ──
+    elif feat_type in ("Chamfer", "ChamferFeature"):
+        try:
+            d = defn.Width
+            if d is not None:
+                params["distance_mm"] = round(d * 1000, 4)
+        except Exception:
+            pass
+        try:
+            import math
+            a = defn.Angle
+            if a is not None:
+                params["angle_deg"] = round(math.degrees(a), 2)
+        except Exception:
+            pass
+    
+    # ── Extrude (Boss or Cut) ──
+    elif feat_type in ("Extrusion", "ICE", "Boss-Extrude"):
+        try:
+            depth = defn.GetDepth(True)  # True = direction 1
+            if depth is not None:
+                params["depth_mm"] = round(abs(depth) * 1000, 4)
+        except Exception:
+            pass
+        try:
+            params["end_condition"] = defn.GetEndCondition(True)
+        except Exception:
+            pass
+        try:
+            params["is_thin"] = bool(defn.IsThinFeature())
+        except Exception:
+            pass
+    
+    # ── Cut-Extrude ──
+    elif feat_type in ("Cut", "CutExtrude", "Cut-Extrude"):
+        try:
+            depth = defn.GetDepth(True)
+            if depth is not None:
+                params["depth_mm"] = round(abs(depth) * 1000, 4)
+        except Exception:
+            pass
+        try:
+            params["through_all"] = (defn.GetEndCondition(True) == 1)
+        except Exception:
+            pass
+    
+    # ── Shell ──
+    elif feat_type in ("Shell", "ShellFeature"):
+        try:
+            t = defn.Thickness
+            if t is not None:
+                params["thickness_mm"] = round(t * 1000, 4)
+        except Exception:
+            pass
+        try:
+            params["outward"] = bool(defn.ShellOutward)
+        except Exception:
+            pass
+        try:
+            faces = defn.RemovedFaces
+            if faces is not None and hasattr(faces, '__len__'):
+                params["removed_face_count"] = len(faces)
+        except Exception:
+            pass
+    
+    # ── Circular Pattern ──
+    elif feat_type in ("CirPattern", "CircularPattern"):
+        try:
+            params["count"] = int(defn.TotalInstances)
+        except Exception:
+            pass
+        try:
+            import math
+            a = defn.Spacing
+            if a is not None:
+                params["angle_deg"] = round(math.degrees(a), 2)
+        except Exception:
+            pass
+        try:
+            params["equal_spacing"] = bool(defn.EqualSpacing)
+        except Exception:
+            pass
+    
+    # ── Linear Pattern ──
+    elif feat_type in ("LPattern", "LinearPattern"):
+        try:
+            params["count_dir1"] = int(defn.D1TotalInstances)
+        except Exception:
+            pass
+        try:
+            s = defn.D1Spacing
+            if s is not None:
+                params["spacing_dir1_mm"] = round(s * 1000, 4)
+        except Exception:
+            pass
+        try:
+            params["count_dir2"] = int(defn.D2TotalInstances)
+        except Exception:
+            pass
+    
+    # ── Revolve ──
+    elif feat_type in ("Revolution", "Revolve", "BossRevolve"):
+        try:
+            import math
+            a = defn.GetRevolutionAngle()
+            if a is not None:
+                params["angle_deg"] = round(math.degrees(a), 2)
+        except Exception:
+            pass
+    
+    # ── Loft ──
+    elif feat_type in ("Loft", "LoftFeature"):
+        try:
+            profiles = defn.Profiles
+            if profiles is not None and hasattr(profiles, '__len__'):
+                params["profile_count"] = len(profiles)
+        except Exception:
+            pass
+    
+    # ── Sweep ──
+    elif feat_type in ("Sweep", "SweepFeature"):
+        try:
+            params["twist_type"] = defn.TwistCtrlOption
+        except Exception:
+            pass
+        try:
+            params["alignment"] = defn.PathAlignmentType
+        except Exception:
+            pass
+    
+    # ── Thread ──
+    elif feat_type in ("Thread", "CosmeticThread", "SweepThread"):
+        try:
+            d = defn.Diameter
+            if d is not None:
+                params["diameter_mm"] = round(d * 1000, 4)
+        except Exception:
+            pass
+        try:
+            p = defn.Pitch
+            if p is not None:
+                params["pitch_mm"] = round(p * 1000, 4)
+        except Exception:
+            pass
+        try:
+            depth = defn.BlindDepth
+            if depth is not None:
+                params["depth_mm"] = round(depth * 1000, 4)
+        except Exception:
+            pass
+        try:
+            params["right_handed"] = bool(defn.RightHanded)
+        except Exception:
+            pass
+    
+    # ── Sketch (count entities) ──
+    elif feat_type in ("ProfileFeature", "3DProfileFeature"):
+        try:
+            sketch = feat.GetSpecificFeature2()
+            if sketch is not None:
+                try:
+                    seg_count = sketch.GetSketchSegmentCount()
+                    params["segment_count"] = seg_count
+                except Exception:
+                    pass
+                try:
+                    pt_count = sketch.GetSketchPointCount() 
+                    params["point_count"] = pt_count
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    
+    return params
+
+
+# ============================================================
 # BODY INFO
 # ============================================================
 
@@ -388,6 +664,7 @@ def get_model_properties():
         "bounding_box": {},
         "features": [],
         "feature_types": {},
+        "feature_details": [],   # NEW: deep parameter extraction
         "feature_count": 0,
         "feature_tree_available": False,
         "body_count": 0,
@@ -425,6 +702,19 @@ def get_model_properties():
     except Exception as e:
         result["feature_tree_available"] = False
         print(f"    [DEBUG] ❌ Feature tree failed: {e}")
+    
+    # 1b. Deep feature parameter extraction
+    print("    [DEBUG] Getting feature details (deep extraction)...")
+    try:
+        details = get_feature_details()
+        result["feature_details"] = details
+        param_count = sum(1 for d in details if d.get("parameters"))
+        print(f"    [DEBUG] ✅ Feature details: {len(details)} features, {param_count} with params")
+        for d in details:
+            if d.get("parameters"):
+                print(f"    [DEBUG]   {d['name']} ({d['type']}): {d['parameters']}")
+    except Exception as e:
+        print(f"    [DEBUG] ⚠️ Feature details failed (non-critical): {e}")
     
     # 2. Body info
     print("    [DEBUG] Getting body info...")

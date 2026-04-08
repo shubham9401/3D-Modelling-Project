@@ -12,6 +12,14 @@ This script provides a complete workflow with three modes:
 
 import os
 import sys
+
+# Fix Windows terminal encoding for emoji/unicode output
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 # Load environment variables from .env file
 try:
     from dotenv import load_dotenv
@@ -83,10 +91,17 @@ def mode_create():
     actions = get_agent_response(user_request)
     
     if not actions:
-        print("❌ Failed to generate mission. Please try again.")
+        print("[FAIL] Failed to generate mission. Please try again.")
         return
     
     save_mission(actions)
+    
+    # Show action summary
+    print(f"\n   Generated {len(actions)} steps:")
+    for i, a in enumerate(actions, 1):
+        tool = a.get('tool', '?')
+        args_summary = ', '.join(f"{k}={v}" for k, v in a.get('args', {}).items())
+        print(f"   {i:2d}. {tool}({args_summary})")
     
     # Step 2: Execute in SolidWorks
     print("\n" + "-" * 40)

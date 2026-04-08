@@ -1,106 +1,117 @@
 {
-  "prompt": "Create a spur gear with 20 teeth, outer diameter 50mm, 10mm thick",
-  "score": 100,
-  "status": "PASS",
+  "prompt": "Create a water bottle, 70mm body diameter, 26mm neck, 200mm tall, 2mm wall",
+  "score": 35,
+  "status": "FAIL",
   "expected_spec": {
-    "description": "Spur gear with 20 teeth",
+    "description": "Water bottle with cylindrical body and narrower neck",
     "expected_dimensions": {
-      "width": 55,
-      "height": 10,
-      "depth": 55
+      "width": 70,
+      "height": 200,
+      "depth": 70
     },
     "expected_features": [
       "Extrude",
-      "CircularPattern"
+      "Shell"
     ],
     "expected_body_count": 1,
     "expected_shape": "custom",
+    "feature_parameters": [
+      {
+        "feature_type": "Extrude",
+        "parameter": "depth",
+        "expected_value": 200.0,
+        "unit": "mm"
+      },
+      {
+        "feature_type": "Shell",
+        "parameter": "thickness",
+        "expected_value": 2.0,
+        "unit": "mm"
+      }
+    ],
     "specific_measurements": [
-      "Outer diameter: 50mm",
-      "Number of teeth: 20",
-      "Thickness (face width): 10mm",
-      "Estimated tooth protrusion beyond outer diameter: ~2.5mm per side (total BBox increase ~5mm)"
+      "Body diameter: 70mm",
+      "Neck diameter: 26mm",
+      "Height: 200mm",
+      "Wall thickness: 2mm"
     ],
     "design_checks": [
-      "Circular base disk with 50mm outer diameter",
-      "20 evenly spaced teeth around the perimeter",
-      "Teeth extend radially beyond the 50mm diameter",
-      "Uniform 10mm thickness across the gear",
-      "Teeth profile consistent around the gear"
+      "Cylindrical body with uniform 2mm wall thickness",
+      "Narrower neck of 26mm diameter at top",
+      "Smooth transition between body and neck",
+      "Overall height of 200mm",
+      "No gaps or leaks in the shell"
     ],
-    "tolerance_percent": 15,
-    "notes": "Bounding box width/depth includes estimated tooth protrusion, giving ~55mm each."
+    "tolerance_percent": 10,
+    "notes": "Simple bottle geometry; bounding box based on maximum body diameter."
   },
   "actual_properties": {
     "dimensions": {
-      "width": 54.0,
-      "height": 10.74,
-      "depth": 50.0
+      "width": 35.0,
+      "height": 400.0,
+      "depth": 400.0
     },
     "bounding_box": {
-      "min_x": -25.0,
-      "min_y": -0.37,
-      "min_z": -25.0,
-      "max_x": 29.0,
-      "max_y": 10.37,
-      "max_z": 25.0,
-      "width": 54.0,
-      "height": 10.74,
-      "depth": 50.0
+      "min_x": 0.0,
+      "min_y": -200.0,
+      "min_z": -200.0,
+      "max_x": 35.0,
+      "max_y": 200.0,
+      "max_z": 200.0,
+      "width": 35.0,
+      "height": 400.0,
+      "depth": 400.0
     },
     "features": [
       {
-        "name": "Boss-Extrude1",
-        "type": "Boss-Extrude"
+        "name": "Revolve1",
+        "type": "Revolve"
       },
       {
-        "name": "Boss-Extrude2",
-        "type": "Boss-Extrude"
-      },
-      {
-        "name": "CirPattern1",
-        "type": "CirPattern"
+        "name": "Shell1",
+        "type": "Shell"
       }
     ],
     "feature_types": {
-      "Boss-Extrude": 2,
-      "CirPattern": 1
+      "Revolve": 1,
+      "Shell": 1
     },
-    "feature_count": 3,
+    "feature_details": [],
+    "feature_count": 2,
     "feature_tree_available": true,
     "body_count": 1,
-    "face_count": 122,
-    "edge_count": 360,
-    "volume_mm3": 19991.15,
-    "surface_area_mm2": 5679.34
+    "face_count": 5,
+    "edge_count": 4,
+    "volume_mm3": 3405277.0,
+    "surface_area_mm2": 277447.51
   },
   "scored_checks": [
     {
       "check": "Width",
-      "expected": 55,
-      "actual": 54.0,
-      "status": "PASS"
+      "expected": 70,
+      "actual": 35.0,
+      "status": "FAIL"
     },
     {
       "check": "Height",
-      "expected": 10,
-      "actual": 10.74,
-      "status": "PASS"
+      "expected": 200,
+      "actual": 400.0,
+      "status": "FAIL"
     },
     {
       "check": "Depth",
-      "expected": 55,
-      "actual": 50.0,
-      "status": "PASS"
+      "expected": 70,
+      "actual": 400.0,
+      "status": "FAIL"
     },
     {
       "check": "Feature: Extrude",
       "expected": "Yes",
-      "actual": "Yes",
-      "status": "PASS"
+      "actual": "No",
+      "status": "FAIL"
     },
     {
-      "check": "Feature: CircularPattern",
+      "check": "Feature: Shell",
       "expected": "Yes",
       "actual": "Yes",
       "status": "PASS"
@@ -115,70 +126,86 @@
   "info_items": [
     {
       "check": "Face Count",
-      "actual": 122,
-      "note": "122 faces detected"
+      "actual": 5,
+      "note": "5 faces detected"
+    },
+    {
+      "check": "Param: Extrude depth",
+      "actual": "200.0mm",
+      "note": "Parameter not readable from SolidWorks API \u2014 verify visually"
+    },
+    {
+      "check": "Param: Shell thickness",
+      "actual": "2.0mm",
+      "note": "Parameter not readable from SolidWorks API \u2014 verify visually"
     },
     {
       "check": "Volume",
-      "actual": "19,991.2 mm\u00b3",
+      "actual": "3,405,277.0 mm\u00b3",
       "note": "Not scored (complex shape \u2014 no formula to verify against)"
     },
     {
       "check": "Surface Area",
-      "actual": "5,679.3 mm\u00b2",
+      "actual": "277,447.5 mm\u00b2",
       "note": "Not scored (complex shape \u2014 no formula to verify against)"
     },
     {
       "check": "Spec",
-      "actual": "Outer diameter: 50mm",
+      "actual": "Body diameter: 70mm",
       "note": "From prompt \u2014 verify visually"
     },
     {
       "check": "Spec",
-      "actual": "Number of teeth: 20",
+      "actual": "Neck diameter: 26mm",
       "note": "From prompt \u2014 verify visually"
     },
     {
       "check": "Spec",
-      "actual": "Thickness (face width): 10mm",
+      "actual": "Height: 200mm",
       "note": "From prompt \u2014 verify visually"
     },
     {
       "check": "Spec",
-      "actual": "Estimated tooth protrusion beyond outer diameter: ~2.5mm per side (total BBox increase ~5mm)",
+      "actual": "Wall thickness: 2mm",
       "note": "From prompt \u2014 verify visually"
     },
     {
       "check": "Design",
-      "actual": "Circular base disk with 50mm outer diameter",
+      "actual": "Cylindrical body with uniform 2mm wall thickness",
       "note": "Verify visually in SolidWorks"
     },
     {
       "check": "Design",
-      "actual": "20 evenly spaced teeth around the perimeter",
+      "actual": "Narrower neck of 26mm diameter at top",
       "note": "Verify visually in SolidWorks"
     },
     {
       "check": "Design",
-      "actual": "Teeth extend radially beyond the 50mm diameter",
+      "actual": "Smooth transition between body and neck",
       "note": "Verify visually in SolidWorks"
     },
     {
       "check": "Design",
-      "actual": "Uniform 10mm thickness across the gear",
+      "actual": "Overall height of 200mm",
       "note": "Verify visually in SolidWorks"
     },
     {
       "check": "Design",
-      "actual": "Teeth profile consistent around the gear",
+      "actual": "No gaps or leaks in the shell",
       "note": "Verify visually in SolidWorks"
     }
   ],
-  "deviations": [],
+  "deviations": [
+    "Width: 35.0mm (expected 70mm, off by 50.0%)",
+    "Height: 400.0mm (expected 200mm, off by 100.0%)",
+    "Depth: 400.0mm (expected 70mm, off by 471.4%)",
+    "Feature 'Extrude': MISSING"
+  ],
   "scores_breakdown": {
-    "dim": 100,
-    "feat": 100,
+    "dim": 0,
+    "feat": 50,
     "struct": 100,
+    "params": "N/A",
     "vol": "N/A",
     "sa": "N/A"
   }

@@ -49,6 +49,8 @@ TOOL_REGISTRY = {
     "draw_triangle": sketch.draw_triangle,
     "draw_hexagon": sketch.draw_hexagon,
     "draw_spline": sketch.draw_spline,
+    "draw_trapezoid": sketch.draw_trapezoid,
+    
     
     # Sketch validation
     "validate_closed_profile": sketch.validate_closed_profile,
@@ -71,6 +73,8 @@ TOOL_REGISTRY = {
     "thread_tap": feature.thread_tap,
     "sheet_metal_base_flange": feature.sheet_metal_base_flange,
     "edge_flange": feature.edge_flange,
+    "hem": feature.hem,
+    "miter_flange": feature.miter_flange,
     
     # Patterns
     "linear_pattern": feature.linear_pattern,

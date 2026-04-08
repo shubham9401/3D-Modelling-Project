@@ -6,13 +6,61 @@
     {
         "tool": "create_sketch",
         "args": {
-            "plane": "Top"
+            "plane": "Front"
         }
     },
     {
-        "tool": "draw_circle",
+        "tool": "draw_line",
         "args": {
-            "radius": 25
+            "x1": 0,
+            "y1": 0,
+            "x2": 35,
+            "y2": 0
+        }
+    },
+    {
+        "tool": "draw_line",
+        "args": {
+            "x1": 35,
+            "y1": 0,
+            "x2": 35,
+            "y2": 150
+        }
+    },
+    {
+        "tool": "draw_line",
+        "args": {
+            "x1": 35,
+            "y1": 150,
+            "x2": 13,
+            "y2": 170
+        }
+    },
+    {
+        "tool": "draw_line",
+        "args": {
+            "x1": 13,
+            "y1": 170,
+            "x2": 13,
+            "y2": 200
+        }
+    },
+    {
+        "tool": "draw_line",
+        "args": {
+            "x1": 13,
+            "y1": 200,
+            "x2": 0,
+            "y2": 200
+        }
+    },
+    {
+        "tool": "draw_line",
+        "args": {
+            "x1": 0,
+            "y1": 200,
+            "x2": 0,
+            "y2": 0
         }
     },
     {
@@ -20,41 +68,23 @@
         "args": {}
     },
     {
-        "tool": "extrude",
+        "tool": "revolve",
         "args": {
-            "depth": 10
-        }
-    },
-    {
-        "tool": "create_sketch",
-        "args": {
-            "plane": "Top"
-        }
-    },
-    {
-        "tool": "draw_rectangle",
-        "args": {
-            "width": 8,
-            "height": 4,
-            "x": 25,
-            "y": 0
-        }
-    },
-    {
-        "tool": "validate_closed_profile",
-        "args": {}
-    },
-    {
-        "tool": "extrude",
-        "args": {
-            "depth": 10
-        }
-    },
-    {
-        "tool": "circular_pattern",
-        "args": {
-            "count": 20,
             "angle": 360
+        }
+    },
+    {
+        "tool": "select_face_at_coordinate",
+        "args": {
+            "x": 0,
+            "y": 200,
+            "z": 0
+        }
+    },
+    {
+        "tool": "shell",
+        "args": {
+            "thickness": 2
         }
     }
 ]

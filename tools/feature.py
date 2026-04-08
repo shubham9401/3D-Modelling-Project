@@ -804,35 +804,74 @@ def circular_pattern(count, angle=360):
     
     feat_count_before = fm.GetFeatureCount(True)
     
-    # NOTE: We select the cylindrical face of the base body as axis reference
-    # in STEP 3 below (via SelectByRay). No need to find/create named axes.
-    
     # ══════════════════════════════════════════════════════════════
     # STEP 2: Find the LAST feature to pattern
     # ══════════════════════════════════════════════════════════════
     last_feature_name = None
     
-    # Try common feature names — DESCENDING order, BREAK on first match
-    common_names = [
-        "Boss-Extrude10", "Boss-Extrude9", "Boss-Extrude8", "Boss-Extrude7",
-        "Boss-Extrude6", "Boss-Extrude5", "Boss-Extrude4", "Boss-Extrude3",
-        "Boss-Extrude2",
-        "Cut-Extrude10", "Cut-Extrude9", "Cut-Extrude8", "Cut-Extrude7",
-        "Cut-Extrude6", "Cut-Extrude5", "Cut-Extrude4", "Cut-Extrude3",
-        "Cut-Extrude2", "Cut-Extrude1",
-        "Sweep1", "Revolve1", "Loft1",
-        "Boss-Extrude1",
-    ]
+    # STRATEGY A: Walk the feature tree to find the true last Boss/Cut feature
+    # This is more reliable than guessing names
+    try:
+        feat = model.FirstFeature()
+        last_boss = None
+        last_any = None
+        while feat is not None:
+            try:
+                fname = feat.Name
+                ftype = feat.GetTypeName2()
+                
+                # Track Boss-Extrude features (for gears, we want the TOOTH extrude)
+                if ftype in ("Extrusion", "ICE") and "Boss-Extrude" in fname:
+                    last_boss = fname
+                
+                # Track any sculptable feature
+                if ftype in ("Extrusion", "ICE", "Cut", "Revolution", "Sweep", "Loft"):
+                    last_any = fname
+                    
+            except Exception:
+                pass
+            try:
+                feat = feat.GetNextFeature()
+            except Exception:
+                break
+        
+        # Prefer the last Boss-Extrude (NOT Boss-Extrude1 which is usually the base)
+        if last_boss and last_boss != "Boss-Extrude1":
+            last_feature_name = last_boss
+            print(f"    DEBUG: Tree walk found last Boss-Extrude: '{last_feature_name}'")
+        elif last_any and last_any != "Boss-Extrude1":
+            last_feature_name = last_any
+            print(f"    DEBUG: Tree walk found last feature: '{last_feature_name}'")
+    except Exception as e:
+        print(f"    DEBUG: Feature tree walk failed: {e}")
     
-    for name in common_names:
-        try:
-            if model.Extension.SelectByID2(name, "BODYFEATURE", 0, 0, 0, False, 0, nothing, 0):
-                last_feature_name = name
-                print(f"    DEBUG: Feature found: '{name}'")
-                model.ClearSelection2(True)
-                break  # Take first match = highest numbered = LAST created
-        except:
-            pass
+    # STRATEGY B: Fallback - try common feature names (BOSS first, then CUT)
+    # CRITICAL FIX: Boss-Extrude names come FIRST so gear teeth are patterned, not holes
+    if last_feature_name is None:
+        common_names = [
+            # Boss-Extrude: highest numbers first (skip 1 which is base disk)
+            "Boss-Extrude10", "Boss-Extrude9", "Boss-Extrude8", "Boss-Extrude7",
+            "Boss-Extrude6", "Boss-Extrude5", "Boss-Extrude4", "Boss-Extrude3",
+            "Boss-Extrude2",
+            # Cut-Extrude: try after Boss
+            "Cut-Extrude10", "Cut-Extrude9", "Cut-Extrude8", "Cut-Extrude7",
+            "Cut-Extrude6", "Cut-Extrude5", "Cut-Extrude4", "Cut-Extrude3",
+            "Cut-Extrude2", "Cut-Extrude1",
+            # Other feature types
+            "Sweep1", "Revolve1", "Loft1",
+            # Last resort: base feature
+            "Boss-Extrude1",
+        ]
+        
+        for name in common_names:
+            try:
+                if model.Extension.SelectByID2(name, "BODYFEATURE", 0, 0, 0, False, 0, nothing, 0):
+                    last_feature_name = name
+                    print(f"    DEBUG: Feature found by name scan: '{name}'")
+                    model.ClearSelection2(True)
+                    break  # Take first match = highest numbered = LAST created
+            except:
+                pass
     
     if last_feature_name is None:
         raise Exception("No feature found to pattern!")
@@ -840,82 +879,120 @@ def circular_pattern(count, angle=360):
     print(f"    DEBUG: Will pattern '{last_feature_name}' using cylindrical face as axis")
     
     # ══════════════════════════════════════════════════════════════
-    # STEP 3: Select feature (mark=4) and axis (mark=1), then execute
+    # STEP 3: Select the feature to pattern (mark=4)
     # ══════════════════════════════════════════════════════════════
     model.ClearSelection2(True)
     
-    # Select the feature to pattern (mark = 4)
     feat_selected = model.Extension.SelectByID2(
         last_feature_name, "BODYFEATURE", 0, 0, 0, False, 4, nothing, 0
     )
-    print(f"    DEBUG: Feature selection: {feat_selected}")
+    print(f"    DEBUG: Feature '{last_feature_name}' selection: {feat_selected}")
     
-    # Select the CYLINDRICAL FACE of the base body as axis reference (mark=1, append=True)
-    # When you select a cylindrical face for circular pattern, SolidWorks
-    # automatically uses the cylinder's central axis. This is the ONLY reliable method.
+    if not feat_selected:
+        raise Exception(f"Failed to select feature '{last_feature_name}' for pattern")
+    
+    # ══════════════════════════════════════════════════════════════
+    # STEP 4: Select axis reference for the circular pattern
+    # ══════════════════════════════════════════════════════════════
+    # Strategy: Select a CIRCULAR EDGE or CYLINDRICAL FACE on the base disk.
+    # The tooth is at +X direction, so we shoot rays from ±Z to avoid it.
+    # For gear on Top Plane extruded up: base disk has cylindrical face + circular edges.
+    
     axis_selected = False
     
-    # Get bounding box to know the part height and radius for ray targeting
+    # Get bounding box for ray targeting
     try:
-        box = model.GetPartBox()
+        box = model.GetPartBox()  # [xmin, ymin, zmin, xmax, ymax, zmax] in meters
         if box:
-            # box = [xmin, ymin, zmin, xmax, ymax, zmax] in meters
-            mid_y = (box[1] + box[4]) / 2  # mid-height
-            max_x = box[3]  # rightmost edge
-            max_z = box[5]  # front edge
-            print(f"    DEBUG: BBox mid_y={mid_y*1000:.1f}mm, max_x={max_x*1000:.1f}mm")
+            mid_y = (box[1] + box[4]) / 2
+            max_x = abs(box[3])
+            max_z = abs(box[5])
+            min_z = abs(box[2])
+            top_y = box[4]
+            print(f"    DEBUG: BBox mid_y={mid_y*1000:.1f}, max_x={max_x*1000:.1f}, max_z={max_z*1000:.1f}")
         else:
-            mid_y = 0.005  # default 5mm
-            max_x = 0.03   # default 30mm
-            max_z = 0.03
+            mid_y = 0.005
+            max_x = 0.025
+            max_z = 0.025
+            top_y = 0.01
     except:
         mid_y = 0.005
-        max_x = 0.03
-        max_z = 0.03
+        max_x = 0.025
+        max_z = 0.025
+        top_y = 0.01
     
-    # Try selecting the cylindrical face from multiple directions
-    ray_attempts = [
-        # (origin_x, origin_y, origin_z, dir_x, dir_y, dir_z, description)
-        (max_x + 0.01, mid_y, 0, -1, 0, 0, "from +X"),      # From right side
-        (-max_x - 0.01, mid_y, 0, 1, 0, 0, "from -X"),       # From left side  
-        (0, mid_y, max_z + 0.01, 0, 0, -1, "from +Z"),        # From front
-        (0, mid_y, -max_z - 0.01, 0, 0, 1, "from -Z"),        # From back
+    # Method A: Select a CIRCULAR EDGE on the top of the base disk
+    # Shoot ray from above, coming down, at the outer edge of the base
+    # Try from +Z side to AVOID the tooth (which is at +X)
+    edge_ray_attempts = [
+        # origin_x, origin_y, origin_z, dir_x, dir_y, dir_z, description
+        (0, top_y + 0.005, max_z * 0.9, 0, -1, 0, "top-front edge"),
+        (0, top_y + 0.005, -max_z * 0.9, 0, -1, 0, "top-back edge"),
+        (-max_x * 0.9, top_y + 0.005, 0, 0, -1, 0, "top-left edge"),
     ]
     
-    for ox, oy, oz, dx, dy, dz, desc in ray_attempts:
+    for ox, oy, oz, dx, dy, dz, desc in edge_ray_attempts:
         try:
             axis_selected = model.Extension.SelectByRay(
-                ox, oy, oz,    # Ray origin (outside the part)
-                dx, dy, dz,    # Ray direction (toward center)
-                0.001,         # Radius
-                2,             # Type: 2 = FACE
-                True,          # Append to existing selection  
-                1,             # Mark = 1 (axis reference for pattern)
-                0              # Option
+                ox, oy, oz, dx, dy, dz,
+                0.002,   # Radius
+                1,       # Type: 1 = EDGE (circular edge)
+                True,    # Append to feature selection
+                1,       # Mark = 1 (axis reference)
+                0        # Option
             )
             if axis_selected:
-                print(f"    DEBUG: Cylindrical face selected {desc} ✅")
+                print(f"    DEBUG: Circular edge selected ({desc}) ✅")
                 break
         except Exception as e:
-            print(f"    DEBUG: Ray {desc} failed: {e}")
+            print(f"    DEBUG: Edge ray {desc} failed: {e}")
     
-    # Fallback: try named axis entities (rarely works but worth trying)
+    # Method B: Select a CYLINDRICAL FACE on the base disk
+    # Shoot rays from ±Z direction to avoid tooth at +X
     if not axis_selected:
-        for fallback in ["Axis1", "Axis2", "Y Axis"]:
+        face_ray_attempts = [
+            (0, mid_y, max_z + 0.01, 0, 0, -1, "face from +Z"),
+            (0, mid_y, -max_z - 0.01, 0, 0, 1, "face from -Z"),
+            (-max_x - 0.01, mid_y, 0, 1, 0, 0, "face from -X"),
+        ]
+        
+        for ox, oy, oz, dx, dy, dz, desc in face_ray_attempts:
             try:
-                axis_selected = model.Extension.SelectByID2(
-                    fallback, "AXIS", 0, 0, 0, True, 1, nothing, 0
+                axis_selected = model.Extension.SelectByRay(
+                    ox, oy, oz, dx, dy, dz,
+                    0.001,   # Radius
+                    2,       # Type: 2 = FACE (cylindrical face)
+                    True,    # Append
+                    1,       # Mark = 1
+                    0        # Option
                 )
                 if axis_selected:
-                    print(f"    DEBUG: Named axis '{fallback}' selected")
+                    print(f"    DEBUG: Cylindrical face selected ({desc}) ✅")
+                    break
+            except Exception as e:
+                print(f"    DEBUG: Face ray {desc} failed: {e}")
+    
+    # Method C: Try named axis entities
+    if not axis_selected:
+        # Re-select feature first if we lost it
+        model.ClearSelection2(True)
+        model.Extension.SelectByID2(
+            last_feature_name, "BODYFEATURE", 0, 0, 0, False, 4, nothing, 0
+        )
+        for axis_name in ["Axis1", "Axis2", "Y Axis", "Temp Axis 1"]:
+            try:
+                sel = model.Extension.SelectByID2(
+                    axis_name, "AXIS", 0, 0, 0, True, 1, nothing, 0
+                )
+                if sel:
+                    axis_selected = True
+                    print(f"    DEBUG: Named axis '{axis_name}' selected ✅")
                     break
             except:
                 pass
     
-    if not feat_selected:
-        raise Exception(f"Failed to select feature '{last_feature_name}' for pattern")
     if not axis_selected:
-        raise Exception("Failed to select cylindrical face or axis for circular pattern.")
+        raise Exception("Failed to select axis for circular pattern. Could not find circular edge, cylindrical face, or named axis.")
     
     # Execute circular pattern
     for strategy_name, strategy_fn in [
@@ -947,6 +1024,161 @@ def mirror_feature():
     _require_part()
     _fm().InsertMirrorFeature2(False, True, False, False)
     return "Mirrored"
+
+# ============================================================
+# SHEET METAL
+# ============================================================
+
+def sheet_metal_base_flange(thickness=1.0, bend_radius=1.0):
+    """
+    Creates a base flange sheet metal feature from the active sketch.
+    This converts the current sketch profile into a sheet metal body.
+    
+    Args:
+        thickness: Sheet metal thickness in mm (default 1.0)
+        bend_radius: Default bend radius in mm (default 1.0)
+    """
+    _require_part()
+    model = _model()
+    fm = _fm()
+    
+    t = thickness / 1000.0  # Convert to meters
+    r = bend_radius / 1000.0
+    
+    feat_count_before = fm.GetFeatureCount(True)
+    
+    # InsertSheetMetalBaseFlange2(
+    #   dThickness, bReverseDir, dBendRadius, 
+    #   nEndCondition, dEndCondValue, bMidPlane, 
+    #   dDirection2EndCondValue, bDirection2MidPlane,
+    #   bUseFeatScope, bUseAutoSelect, bFlipDir2, bMerge,
+    #   dBReadGaugeTableThickness, bUseGaugeTable, sGaugeTablePath)
+    try:
+        result = fm.InsertSheetMetalBaseFlange2(
+            t, False, r,
+            0, t, False,   # EndCondition = 0 (Blind), value = thickness
+            0, False,       # Dir2
+            True, True,     # UseFeatScope, AutoSelect
+            False, True,    # FlipDir2, Merge
+            0, False, ""    # GaugeTable
+        )
+        
+        feat_count_after = fm.GetFeatureCount(True)
+        if feat_count_after > feat_count_before:
+            model.ForceRebuild3(True)
+            return f"Sheet metal base flange: {thickness}mm thick, bend radius {bend_radius}mm"
+    except Exception as e:
+        print(f"    DEBUG: InsertSheetMetalBaseFlange2 failed: {e}")
+    
+    # Fallback: try simpler version
+    try:
+        result = model.InsertSheetMetalBaseFlange(t, False, r)
+        model.ForceRebuild3(True)
+        return f"Sheet metal base flange: {thickness}mm thick, bend radius {bend_radius}mm"
+    except Exception as e:
+        print(f"    DEBUG: InsertSheetMetalBaseFlange failed: {e}")
+    
+    raise Exception("Sheet metal base flange creation failed. Make sure a closed sketch profile is active.")
+
+def edge_flange(length=10.0, angle=90.0, bend_radius=None):
+    """
+    Adds an edge flange to the selected edge of a sheet metal part.
+    
+    Pre-select the edge with select_edge_at_coordinate() first.
+    
+    Args:
+        length: Flange length in mm (default 10)
+        angle: Bend angle in degrees (default 90)
+        bend_radius: Bend radius in mm (uses part default if not specified)
+    """
+    _require_part()
+    model = _model()
+    fm = _fm()
+    
+    l = length / 1000.0
+    a = math.radians(angle)
+    
+    feat_count_before = fm.GetFeatureCount(True)
+    
+    # Try InsertSheetMetalEdgeFlange2
+    try:
+        r = (bend_radius / 1000.0) if bend_radius else 0.001
+        use_default_radius = bend_radius is None
+        
+        result = fm.InsertSheetMetalEdgeFlange2(
+            l,                     # Length
+            a,                     # Angle (radians)
+            0,                     # Gap distance
+            0,                     # Options
+            0,                     # Relief type
+            0, 0,                  # Relief ratio, width
+            0,                     # Flange position
+            use_default_radius,    # Use default bend radius
+            r                      # Bend radius
+        )
+        
+        feat_count_after = fm.GetFeatureCount(True)
+        if feat_count_after > feat_count_before:
+            model.ForceRebuild3(True)
+            return f"Edge flange: {length}mm at {angle}° angle"
+    except Exception as e:
+        print(f"    DEBUG: InsertSheetMetalEdgeFlange2 failed: {e}")
+    
+    # Fallback
+    try:
+        result = fm.InsertSheetMetalEdgeFlange(l, a, 0, 0)
+        model.ForceRebuild3(True)
+        return f"Edge flange: {length}mm at {angle}° angle"
+    except Exception as e:
+        print(f"    DEBUG: InsertSheetMetalEdgeFlange failed: {e}")
+    
+    raise Exception(f"Edge flange failed. Pre-select an edge and ensure the part is sheet metal.")
+
+def hem(length=5.0, gap=0.0, hem_type="closed"):
+    """
+    Creates a hem on the selected edge.
+    
+    Args:
+        length: Hem length in mm (default 5)
+        gap: Gap distance in mm (default 0)
+        hem_type: 'closed', 'open', 'tear_drop', or 'rolled' (default 'closed')
+    """
+    _require_part()
+    model = _model()
+    fm = _fm()
+    
+    l = length / 1000.0
+    g = gap / 1000.0
+    
+    type_map = {"closed": 0, "open": 1, "tear_drop": 2, "rolled": 3}
+    ht = type_map.get(hem_type, 0)
+    
+    try:
+        result = fm.InsertSheetMetalHem(ht, 0, l, g, 0)
+        model.ForceRebuild3(True)
+        return f"Hem: {length}mm {hem_type}"
+    except Exception as e:
+        raise Exception(f"Hem failed: {e}")
+
+def miter_flange(length=10.0):
+    """
+    Creates a miter flange on selected edges.
+    
+    Args:
+        length: Flange length in mm (default 10)
+    """
+    _require_part()
+    model = _model()
+    fm = _fm()
+    
+    l = length / 1000.0
+    
+    try:
+        result = fm.InsertSheetMetalMiterFlange(l, 0, True, True)
+        model.ForceRebuild3(True)
+        return f"Miter flange: {length}mm"
+    except Exception as e:
+        raise Exception(f"Miter flange failed: {e}")
 
 def get_feature_count():
     """Returns feature count."""
@@ -1552,3 +1784,5 @@ def delete_feature(feature_name):
     model.ClearSelection2(True)
     
     return f"Deleted feature '{used_name}'"
+
+    

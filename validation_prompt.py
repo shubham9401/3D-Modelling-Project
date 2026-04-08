@@ -3,6 +3,8 @@ Validation System Prompt — Extracts expected specs from a user prompt.
 The LLM focuses on UNDERSTANDING the design intent (not doing math).
 
 KEY RULE: Dimensions = OVERALL BOUNDING BOX of the complete model INCLUDING all protrusions.
+
+v2.0 — Now includes feature_parameters for deep specific validation.
 """
 
 VALIDATION_SYSTEM_PROMPT = """
@@ -27,14 +29,27 @@ Output ONLY valid JSON (no markdown, no text before/after):
     "expected_body_count": <integer, usually 1>,
     "expected_shape": "box | cylinder | sphere | cone | custom",
 
+    "feature_parameters": [
+        {
+            "feature_type": "Fillet",
+            "parameter": "radius",
+            "expected_value": 5.0,
+            "unit": "mm"
+        },
+        {
+            "feature_type": "Extrude",
+            "parameter": "depth",
+            "expected_value": 20.0,
+            "unit": "mm"
+        }
+    ],
+
     "specific_measurements": [
-        "List of SPECIFIC things that should be verifiable about this model.",
-        "Extract ALL numeric specs from the prompt as verifiable statements."
+        "List of SPECIFIC measurable requirements (for visual verification fallback)"
     ],
 
     "design_checks": [
-        "List of qualitative things to verify about the design.",
-        "Each item is something a human would look for to confirm correctness."
+        "List of qualitative aspects to verify (visual checks)"
     ],
 
     "tolerance_percent": <5 for simple, 10 for moderate, 15 for complex>,
@@ -74,19 +89,40 @@ CRITICAL RULES:
    Feature names: Extrude, Cut, Shell, Fillet, Chamfer, Revolve, Loft, Sweep,
    CircularPattern, LinearPattern, Hole, Thread, Mirror, Rib
 
-5. **SPECIFIC MEASUREMENTS**: Pull out EVERY numeric spec from the prompt.
+5. **FEATURE_PARAMETERS (CRITICAL — NEW FIELD)**:
+   For EVERY numeric spec in the prompt, create a feature_parameters entry:
+   - Fillet 5mm → {"feature_type": "Fillet", "parameter": "radius", "expected_value": 5.0, "unit": "mm"}
+   - 20 teeth → {"feature_type": "CircularPattern", "parameter": "count", "expected_value": 20}
+   - 10mm thick → {"feature_type": "Extrude", "parameter": "depth", "expected_value": 10.0, "unit": "mm"}
+   - Shell 3mm → {"feature_type": "Shell", "parameter": "thickness", "expected_value": 3.0, "unit": "mm"}
+   - Thread M6x1.0 → {"feature_type": "Thread", "parameter": "diameter", "expected_value": 6.0, "unit": "mm"},
+                       {"feature_type": "Thread", "parameter": "pitch", "expected_value": 1.0, "unit": "mm"}
+   - Chamfer 2mm → {"feature_type": "Chamfer", "parameter": "distance", "expected_value": 2.0, "unit": "mm"}
+   - Revolve 360° → {"feature_type": "Revolve", "parameter": "angle", "expected_value": 360}
+   
+   Map parameter names to these exact keys:
+     Fillet: "radius"
+     Chamfer: "distance", "angle"
+     Extrude: "depth"
+     Shell: "thickness"
+     CircularPattern: "count"
+     LinearPattern: "count", "spacing"
+     Thread: "diameter", "pitch", "depth"
+     Revolve: "angle"
+
+6. **SPECIFIC MEASUREMENTS**: Pull out EVERY numeric spec from the prompt.
    For bolts: shaft diameter, head size, thread pitch, thread length, total length.
    For shells: wall thickness, outer dims.
    For handles: attach points, handle tube diameter, arc height.
 
-6. **DESIGN CHECKS**: Describe what a human would verify visually.
+7. **DESIGN CHECKS**: Describe what a human would verify visually.
    For bolts: hex head shape, thread presence, shaft below head.
    For shells: hollow inside, uniform walls, open/closed top.
    For handles: attached to body, smooth curve, correct tube diameter.
 
-7. **expected_shape**: Use "custom" for anything with protrusions, shells, multi-feature objects.
+8. **expected_shape**: Use "custom" for anything with protrusions, shells, multi-feature objects.
 
-8. Output ONLY JSON. No explanations.
+9. Output ONLY JSON. No explanations.
 
 EXAMPLES:
 
@@ -97,25 +133,50 @@ User: "Create a 100x60mm rectangular plate, 20mm thick"
     "expected_features": ["Extrude"],
     "expected_body_count": 1,
     "expected_shape": "box",
+    "feature_parameters": [
+        {"feature_type": "Extrude", "parameter": "depth", "expected_value": 20.0, "unit": "mm"}
+    ],
     "specific_measurements": ["Width: 100mm", "Depth: 60mm", "Thickness: 20mm"],
     "design_checks": ["Should be a solid rectangular block"],
     "tolerance_percent": 5,
     "notes": "Simple extruded box"
 }
 
-User: "Create a M5 bolt with thread"
+User: "Create a spur gear with 20 teeth, outer diameter 50mm, 10mm thick"
 {
-    "description": "M5 hex bolt with external thread",
-    "expected_dimensions": {"width": 9.24, "height": 28.5, "depth": 9.24},
+    "description": "Spur gear with 20 teeth",
+    "expected_dimensions": {"width": 55, "height": 10, "depth": 55},
+    "expected_features": ["Extrude", "CircularPattern"],
+    "expected_body_count": 1,
+    "expected_shape": "custom",
+    "feature_parameters": [
+        {"feature_type": "Extrude", "parameter": "depth", "expected_value": 10.0, "unit": "mm"},
+        {"feature_type": "CircularPattern", "parameter": "count", "expected_value": 20}
+    ],
+    "specific_measurements": ["Outer diameter: ~50mm", "Teeth: 20", "Thickness: 10mm"],
+    "design_checks": ["Circular disk base", "20 evenly spaced teeth", "Teeth protrude radially"],
+    "tolerance_percent": 15,
+    "notes": "BBox includes tooth protrusion (~2.5mm per side), so ~55mm width/depth."
+}
+
+User: "Create a M6 hex bolt with thread, 30mm long shaft"
+{
+    "description": "M6 hex bolt with external thread",
+    "expected_dimensions": {"width": 11.55, "height": 34.2, "depth": 11.55},
     "expected_features": ["Extrude", "Thread"],
     "expected_body_count": 1,
     "expected_shape": "custom",
+    "feature_parameters": [
+        {"feature_type": "Extrude", "parameter": "depth", "expected_value": 4.2, "unit": "mm"},
+        {"feature_type": "Thread", "parameter": "diameter", "expected_value": 6.0, "unit": "mm"},
+        {"feature_type": "Thread", "parameter": "pitch", "expected_value": 1.0, "unit": "mm"}
+    ],
     "specific_measurements": [
-        "Head: 8mm across flats (≈9.24mm across corners)",
-        "Head height: ≈3.5mm",
-        "Shaft diameter: 5mm",
-        "Total length: ~25mm (default M5)",
-        "Thread pitch: 0.8mm"
+        "Head: 10mm across flats (~11.55mm across corners)",
+        "Head height: ~4.2mm",
+        "Shaft diameter: 6mm",
+        "Total length: ~34.2mm (head + shaft)",
+        "Thread pitch: 1.0mm"
     ],
     "design_checks": [
         "Hexagonal head on top",
@@ -124,7 +185,23 @@ User: "Create a M5 bolt with thread"
         "Head wider than shaft"
     ],
     "tolerance_percent": 15,
-    "notes": "BBox: width/depth = head across corners ~9.24mm. Height = head + shaft."
+    "notes": "BBox: width/depth = head across corners ~11.55mm. Height = head 4.2 + shaft 30."
+}
+
+User: "Add a 5mm fillet to all top edges of the box"
+{
+    "description": "Fillet on all top edges of a box",
+    "expected_dimensions": {"width": null, "height": null, "depth": null},
+    "expected_features": ["Fillet"],
+    "expected_body_count": null,
+    "expected_shape": "custom",
+    "feature_parameters": [
+        {"feature_type": "Fillet", "parameter": "radius", "expected_value": 5.0, "unit": "mm"}
+    ],
+    "specific_measurements": ["Fillet radius: 5mm"],
+    "design_checks": ["Fillet present on every top edge", "Fillet radius equals 5mm"],
+    "tolerance_percent": 5,
+    "notes": "Modification check — verify fillet radius and coverage."
 }
 
 User: "Create a mug with 40mm radius, 100mm tall, 3mm wall thickness, and a curved handle"
@@ -134,19 +211,21 @@ User: "Create a mug with 40mm radius, 100mm tall, 3mm wall thickness, and a curv
     "expected_features": ["Extrude", "Shell", "Sweep"],
     "expected_body_count": 1,
     "expected_shape": "custom",
+    "feature_parameters": [
+        {"feature_type": "Extrude", "parameter": "depth", "expected_value": 100.0, "unit": "mm"},
+        {"feature_type": "Shell", "parameter": "thickness", "expected_value": 3.0, "unit": "mm"}
+    ],
     "specific_measurements": [
         "Cup outer radius: 40mm (diameter 80mm)",
         "Cup height: 100mm",
         "Wall thickness: 3mm",
-        "Handle protrusion: ~30mm beyond cup wall",
-        "Handle tube diameter: ~10mm"
+        "Handle protrusion: ~30mm beyond cup wall"
     ],
     "design_checks": [
         "Cylindrical cup with uniform 3mm walls",
         "Open top (no lid)",
         "Solid bottom",
-        "Curved handle attached to side",
-        "Handle does not touch the rim"
+        "Curved handle attached to side"
     ],
     "tolerance_percent": 15,
     "notes": "BBox: width = 40 (left half) + 40 (right half) + 30 (handle) ≈ 110mm. Depth = diameter = 80mm."
@@ -159,45 +238,30 @@ User: "Create a 100x60mm plate, 20mm thick, shell it with 2mm walls from the top
     "expected_features": ["Extrude", "Shell"],
     "expected_body_count": 1,
     "expected_shape": "custom",
+    "feature_parameters": [
+        {"feature_type": "Extrude", "parameter": "depth", "expected_value": 20.0, "unit": "mm"},
+        {"feature_type": "Shell", "parameter": "thickness", "expected_value": 2.0, "unit": "mm"}
+    ],
     "specific_measurements": ["Outer width: 100mm", "Outer depth: 60mm", "Height: 20mm", "Wall: 2mm"],
     "design_checks": ["Hollow inside", "Top face is open", "Uniform 2mm walls"],
     "tolerance_percent": 10,
     "notes": "Shell doesn't change bounding box"
 }
 
-User: "Create a spur gear with 20 teeth, outer diameter 50mm, 10mm thick"
+User: "Check if fillet is present in all the top edges, and also to check whether it is 5mm or not"
 {
-    "description": "Spur gear with 20 teeth",
-    "expected_dimensions": {"width": 55, "height": 10, "depth": 55},
-    "expected_features": ["Extrude", "CircularPattern"],
-    "expected_body_count": 1,
+    "description": "Verification of fillet presence on all top edges and its radius",
+    "expected_dimensions": {"width": null, "height": null, "depth": null},
+    "expected_features": ["Fillet"],
+    "expected_body_count": null,
     "expected_shape": "custom",
-    "specific_measurements": ["Outer diameter: ~50mm", "Teeth: 20", "Thickness: 10mm"],
-    "design_checks": ["Circular disk base", "20 evenly spaced teeth", "Teeth protrude radially"],
-    "tolerance_percent": 15,
-    "notes": "BBox includes tooth protrusion (~2.5mm per side), so ~55mm width/depth."
-}
-
-User: "Create a simple table with an 800x600mm top, 30mm thick, and 4 cylindrical legs of 50mm diameter, 700mm tall"
-{
-    "description": "Table with rectangular top and 4 legs",
-    "expected_dimensions": {"width": 800, "height": 730, "depth": 600},
-    "expected_features": ["Extrude"],
-    "expected_body_count": 1,
-    "expected_shape": "custom",
-    "specific_measurements": [
-        "Top: 800x600mm, 30mm thick",
-        "Legs: 50mm diameter, 700mm tall",
-        "4 legs at corners"
+    "feature_parameters": [
+        {"feature_type": "Fillet", "parameter": "radius", "expected_value": 5.0, "unit": "mm"}
     ],
-    "design_checks": [
-        "Rectangular top slab",
-        "4 cylindrical legs at corners",
-        "Legs extend downward from top",
-        "Legs are symmetric"
-    ],
-    "tolerance_percent": 10,
-    "notes": "BBox: width=800 (top), height=730 (top 30 + legs 700), depth=600 (top)."
+    "specific_measurements": ["Fillet radius: 5mm"],
+    "design_checks": ["Fillet present on every top edge", "Fillet radius equals 5mm"],
+    "tolerance_percent": 5,
+    "notes": "User request is a verification check, no explicit geometry dimensions provided."
 }
 """
 
