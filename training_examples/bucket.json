@@ -1,0 +1,124 @@
+[
+    {
+        "tool": "create_part",
+        "args": {}
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Top"
+        }
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 100
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "extrude",
+        "args": {
+            "depth": 150
+        }
+    },
+    {
+        "tool": "select_face_at_coordinate",
+        "args": {
+            "x": 0,
+            "y": 150,
+            "z": 0
+        }
+    },
+    {
+        "tool": "shell",
+        "args": {
+            "thickness": 3
+        }
+    },
+    {
+        "tool": "create_reference_plane",
+        "args": {
+            "plane": "Right",
+            "offset": 100
+        }
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Plane1"
+        }
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 15,
+            "x": 0,
+            "y": 120
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "exit_sketch",
+        "args": {}
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Front"
+        }
+    },
+    {
+        "tool": "draw_spline",
+        "args": {
+            "points": [
+                [
+                    100,
+                    120
+                ],
+                [
+                    100,
+                    150
+                ],
+                [
+                    -100,
+                    150
+                ],
+                [
+                    -100,
+                    120
+                ]
+            ]
+        }
+    },
+    {
+        "tool": "exit_sketch",
+        "args": {}
+    },
+    {
+        "tool": "select_sketch",
+        "args": {
+            "sketch_name": "Sketch2",
+            "mark": 1,
+            "append": false
+        }
+    },
+    {
+        "tool": "select_sketch",
+        "args": {
+            "sketch_name": "Sketch3",
+            "mark": 4,
+            "append": true
+        }
+    },
+    {
+        "tool": "sweep",
+        "args": {}
+    }
+]

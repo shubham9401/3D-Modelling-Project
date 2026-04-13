@@ -1,0 +1,14 @@
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Front"}},
+    {"tool": "draw_line", "args": {"x1": 0, "y1": 0, "x2": 100, "y2": 0}},
+    {"tool": "draw_line", "args": {"x1": 100, "y1": 0, "x2": 100, "y2": 5}},
+    {"tool": "draw_line", "args": {"x1": 100, "y1": 5, "x2": 5, "y2": 5}},
+    {"tool": "draw_line", "args": {"x1": 5, "y1": 5, "x2": 5, "y2": 80}},
+    {"tool": "draw_line", "args": {"x1": 5, "y1": 80, "x2": 0, "y2": 80}},
+    {"tool": "draw_line", "args": {"x1": 0, "y1": 80, "x2": 0, "y2": 0}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 30}},
+    {"tool": "select_edge_at_coordinate", "args": {"x": 5, "y": 5, "z": 15}},
+    {"tool": "fillet", "args": {"radius": 15}}
+]

@@ -1,0 +1,16 @@
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 20}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 100}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 100, "z": 0}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_circle", "args": {"radius": 10}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "cut_extrude", "args": {"depth": 80}},
+    {"tool": "select_edge_at_coordinate", "args": {"x": 20, "y": 0, "z": 0}},
+    {"tool": "fillet", "args": {"radius": 3}},
+    {"tool": "select_edge_at_coordinate", "args": {"x": 10, "y": 100, "z": 0}},
+    {"tool": "chamfer", "args": {"distance": 1, "angle": 45}}
+]

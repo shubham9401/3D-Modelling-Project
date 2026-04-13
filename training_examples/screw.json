@@ -1,0 +1,70 @@
+[
+    {
+        "tool": "create_part",
+        "args": {}
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Top"
+        }
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 5,
+            "x": 0,
+            "y": 0
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "extrude",
+        "args": {
+            "depth": 3
+        }
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Top"
+        }
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 2,
+            "x": 0,
+            "y": 0
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "extrude",
+        "args": {
+            "depth": 20
+        }
+    },
+    {
+        "tool": "select_edge_at_coordinate",
+        "args": {
+            "x": 2,
+            "y": 3,
+            "z": 0
+        }
+    },
+    {
+        "tool": "thread",
+        "args": {
+            "diameter": 4,
+            "pitch": 0.7,
+            "depth": 20
+        }
+    }
+]

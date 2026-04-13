@@ -16,6 +16,13 @@ import json
 import os
 from system_prompt import SYSTEM_INSTRUCTION, AVAILABLE_TOOLS
 
+# RAG: Dynamic few-shot example retrieval
+try:
+    from rag_retriever import get_few_shot_context, build_index
+    _RAG_AVAILABLE = True
+except ImportError:
+    _RAG_AVAILABLE = False
+
 # --- CONFIGURATION (read from .env) ---
 
 LLM_API_KEY  = os.environ.get("LLM_API_KEY", "")
@@ -129,7 +136,18 @@ def get_agent_response(user_request, max_retries=1):
     Includes completeness validation with automatic retry.
     Applies post-processing to fix common LLM math errors.
     """
-    full_system_message = f"{SYSTEM_INSTRUCTION}\n\nAVAILABLE TOOLS:\n{AVAILABLE_TOOLS}"
+    # Build system message with RAG-injected examples
+    rag_context = ""
+    if _RAG_AVAILABLE:
+        try:
+            rag_context = get_few_shot_context(user_request, top_k=3)
+        except Exception as e:
+            print(f"    ⚠️ RAG retrieval failed: {e}")
+
+    if rag_context:
+        full_system_message = f"{SYSTEM_INSTRUCTION}\n\n{rag_context}\n\nAVAILABLE TOOLS:\n{AVAILABLE_TOOLS}"
+    else:
+        full_system_message = f"{SYSTEM_INSTRUCTION}\n\nAVAILABLE TOOLS:\n{AVAILABLE_TOOLS}"
 
     print(f"🧠 Processing: '{user_request}' (model: {LLM_MODEL})...")
 

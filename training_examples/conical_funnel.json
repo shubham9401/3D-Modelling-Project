@@ -6,14 +6,13 @@
     {
         "tool": "create_sketch",
         "args": {
-            "plane": "Front"
+            "plane": "Top"
         }
     },
     {
-        "tool": "draw_rectangle",
+        "tool": "draw_circle",
         "args": {
-            "width": 100,
-            "height": 100
+            "radius": 100
         }
     },
     {
@@ -27,8 +26,8 @@
     {
         "tool": "create_reference_plane",
         "args": {
-            "offset": 40,
-            "plane": "Front"
+            "offset": 150,
+            "plane": "Top"
         }
     },
     {
@@ -40,7 +39,7 @@
     {
         "tool": "draw_circle",
         "args": {
-            "radius": 30
+            "radius": 50
         }
     },
     {
@@ -70,5 +69,19 @@
     {
         "tool": "loft",
         "args": {}
+    },
+    {
+        "tool": "select_face_at_coordinate",
+        "args": {
+            "x": 0,
+            "y": 150,
+            "z": 0
+        }
+    },
+    {
+        "tool": "shell",
+        "args": {
+            "thickness": 3
+        }
     }
 ]

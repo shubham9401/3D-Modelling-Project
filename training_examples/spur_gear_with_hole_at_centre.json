@@ -1,0 +1,89 @@
+[
+    {
+        "tool": "create_part",
+        "args": {}
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Top"
+        }
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 20
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "extrude",
+        "args": {
+            "depth": 10
+        }
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Top"
+        }
+    },
+    {
+        "tool": "draw_trapezoid",
+        "args": {
+            "base_width": 5,
+            "tip_width": 2.5,
+            "height": 5,
+            "x": 22,
+            "y": 0
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "extrude",
+        "args": {
+            "depth": 10
+        }
+    },
+    {
+        "tool": "circular_pattern",
+        "args": {
+            "count": 20,
+            "angle": 360
+        }
+    },
+    {
+        "tool": "select_face_at_coordinate",
+        "args": {
+            "x": 0,
+            "y": 10,
+            "z": 0
+        }
+    },
+    {
+        "tool": "create_sketch_on_selected_face",
+        "args": {}
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 5,
+            "x": 0,
+            "y": 0
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "cut_through_all",
+        "args": {}
+    }
+]

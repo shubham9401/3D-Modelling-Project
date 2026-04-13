@@ -6,14 +6,20 @@
     {
         "tool": "create_sketch",
         "args": {
-            "plane": "Front"
+            "plane": "Right"
         }
     },
     {
         "tool": "draw_circle",
         "args": {
-            "radius": 5
+            "radius": 5,
+            "x": 0,
+            "y": 0
         }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
     },
     {
         "tool": "exit_sketch",
@@ -22,7 +28,7 @@
     {
         "tool": "create_sketch",
         "args": {
-            "plane": "Right"
+            "plane": "Front"
         }
     },
     {
@@ -31,19 +37,19 @@
             "points": [
                 [
                     0,
-                    30
-                ],
-                [
-                    25,
-                    50
-                ],
-                [
-                    25,
-                    10
+                    0
                 ],
                 [
                     0,
-                    30
+                    -30
+                ],
+                [
+                    20,
+                    -80
+                ],
+                [
+                    0,
+                    -120
                 ]
             ]
         }
@@ -71,5 +77,19 @@
     {
         "tool": "sweep",
         "args": {}
+    },
+    {
+        "tool": "select_face_at_coordinate",
+        "args": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+        }
+    },
+    {
+        "tool": "shell",
+        "args": {
+            "thickness": 3
+        }
     }
 ]

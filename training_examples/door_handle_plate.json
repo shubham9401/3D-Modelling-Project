@@ -1,0 +1,19 @@
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_rectangle", "args": {"width": 120, "height": 40}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 5}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 5, "z": 0}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_circle", "args": {"radius": 3, "x": 45, "y": 0}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "cut_through_all", "args": {}},
+    {"tool": "select_face_at_coordinate", "args": {"x": -45, "y": 5, "z": 0}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_circle", "args": {"radius": 3, "x": 0, "y": 0}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "cut_through_all", "args": {}},
+    {"tool": "select_edge_at_coordinate", "args": {"x": 60, "y": 5, "z": 0}},
+    {"tool": "fillet", "args": {"radius": 10}}
+]

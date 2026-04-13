@@ -6,13 +6,45 @@
     {
         "tool": "create_sketch",
         "args": {
-            "plane": "Front"
+            "plane": "Top"
+        }
+    },
+    {
+        "tool": "draw_rectangle",
+        "args": {
+            "width": 20,
+            "height": 20
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "extrude",
+        "args": {
+            "depth": 5
+        }
+    },
+    {
+        "tool": "create_reference_plane",
+        "args": {
+            "plane": "Right",
+            "offset": 10
+        }
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Plane1"
         }
     },
     {
         "tool": "draw_circle",
         "args": {
-            "radius": 10
+            "radius": 5,
+            "x": 0,
+            "y": 0
         }
     },
     {
@@ -26,7 +58,7 @@
     {
         "tool": "create_sketch",
         "args": {
-            "plane": "Right"
+            "plane": "Front"
         }
     },
     {
@@ -34,20 +66,20 @@
         "args": {
             "points": [
                 [
-                    0,
+                    10,
                     0
                 ],
                 [
-                    25,
+                    10,
                     50
                 ],
                 [
-                    50,
-                    50
+                    30,
+                    70
                 ],
                 [
-                    75,
-                    0
+                    30,
+                    90
                 ]
             ]
         }
@@ -59,7 +91,7 @@
     {
         "tool": "select_sketch",
         "args": {
-            "sketch_name": "Sketch1",
+            "sketch_name": "Sketch2",
             "mark": 1,
             "append": false
         }
@@ -67,7 +99,7 @@
     {
         "tool": "select_sketch",
         "args": {
-            "sketch_name": "Sketch2",
+            "sketch_name": "Sketch3",
             "mark": 4,
             "append": true
         }

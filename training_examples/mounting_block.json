@@ -1,0 +1,15 @@
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_rectangle", "args": {"width": 60, "height": 40}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 30}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 30, "z": 0}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_circle", "args": {"radius": 3, "x": 22, "y": 12}},
+    {"tool": "draw_circle", "args": {"radius": 3, "x": -22, "y": 12}},
+    {"tool": "draw_circle", "args": {"radius": 3, "x": 22, "y": -12}},
+    {"tool": "draw_circle", "args": {"radius": 3, "x": -22, "y": -12}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "cut_through_all", "args": {}}
+]

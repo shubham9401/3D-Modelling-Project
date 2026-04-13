@@ -126,6 +126,13 @@ def mode_create():
         
         # Step 3: Auto-validate after execution
         if success:
+            # Save as training example for RAG/fine-tuning
+            try:
+                from collect_training_data import save_successful_run
+                save_successful_run(user_request, MISSION_FILE)
+            except Exception as e:
+                print(f"⚠️  Could not save training example: {e}")
+
             print("\n" + "-" * 40)
             print("STEP 4: Auto-validating the result...")
             print("-" * 40)

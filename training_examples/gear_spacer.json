@@ -10,9 +10,9 @@
         }
     },
     {
-        "tool": "draw_hexagon",
+        "tool": "draw_circle",
         "args": {
-            "radius": 5
+            "radius": 20
         }
     },
     {
@@ -22,14 +22,14 @@
     {
         "tool": "extrude",
         "args": {
-            "depth": 5
+            "depth": 10
         }
     },
     {
         "tool": "select_face_at_coordinate",
         "args": {
             "x": 0,
-            "y": 5,
+            "y": 10,
             "z": 0
         }
     },
@@ -40,7 +40,7 @@
     {
         "tool": "draw_circle",
         "args": {
-            "radius": 2.5
+            "radius": 12.5
         }
     },
     {
@@ -54,17 +54,16 @@
     {
         "tool": "select_edge_at_coordinate",
         "args": {
-            "x": 2.5,
-            "y": 5,
+            "x": 20,
+            "y": 10,
             "z": 0
         }
     },
     {
-        "tool": "thread_tap",
+        "tool": "chamfer",
         "args": {
-            "diameter": 6,
-            "pitch": 1.0,
-            "depth": 5
+            "distance": 1,
+            "angle": 45
         }
     }
 ]

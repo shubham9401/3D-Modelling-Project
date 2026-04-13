@@ -1,0 +1,1 @@
+Create a stepped shaft 3 diameters: 30mm x 40mm, then 20mm x 60mm, then 15mm x 30mm

@@ -1,0 +1,75 @@
+[
+    {
+        "tool": "create_part",
+        "args": {}
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Right"
+        }
+    },
+    {
+        "tool": "draw_circle",
+        "args": {
+            "radius": 10
+        }
+    },
+    {
+        "tool": "validate_closed_profile",
+        "args": {}
+    },
+    {
+        "tool": "exit_sketch",
+        "args": {}
+    },
+    {
+        "tool": "create_sketch",
+        "args": {
+            "plane": "Front"
+        }
+    },
+    {
+        "tool": "draw_spline",
+        "args": {
+            "points": [
+                [
+                    0,
+                    0
+                ],
+                [
+                    30,
+                    20
+                ],
+                [
+                    60,
+                    0
+                ]
+            ]
+        }
+    },
+    {
+        "tool": "exit_sketch",
+        "args": {}
+    },
+    {
+        "tool": "select_sketch",
+        "args": {
+            "sketch_name": "Sketch1",
+            "mark": 1,
+            "append": false
+        }
+    },
+    {
+        "tool": "select_sketch",
+        "args": {
+            "sketch_name": "Sketch2",
+            "mark": 4,
+            "append": true
+        }
+    },
+    {
+        "tool": "sweep",
+        "args": {}
+    }
+]

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Validation Report — Water bottle with cylindrical body and narrower neck</title>
+<title>Validation Report — Standard M6 hex nut with internal thread</title>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; line-height: 1.6; }
@@ -17,9 +17,9 @@
 
     /* Score card */
     .score-card { display: flex; align-items: center; gap: 24px; background: #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid #475569; }
-    .score-circle { width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; border: 4px solid #ef4444; color: #ef4444; flex-shrink: 0; }
+    .score-circle { width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; border: 4px solid #22c55e; color: #22c55e; flex-shrink: 0; }
     .score-details { flex: 1; }
-    .score-grade { font-size: 20px; font-weight: 700; color: #ef4444; }
+    .score-grade { font-size: 20px; font-weight: 700; color: #22c55e; }
     .score-note { color: #94a3b8; margin-top: 4px; font-size: 14px; }
 
     /* Section */
@@ -70,15 +70,15 @@
     <!-- HEADER -->
     <div class="header">
         <h1>🔧 Design Validation Report</h1>
-        <div class="prompt">"Create a water bottle, 70mm body diameter, 26mm neck, 200mm tall, 2mm wall"</div>
-        <div class="meta">Generated: 2026-04-09 00:59:53 &nbsp;|&nbsp; Shape: custom &nbsp;|&nbsp; Tolerance: 10%</div>
+        <div class="prompt">"m6 hex nut"</div>
+        <div class="meta">Generated: 2026-04-14 02:23:35 &nbsp;|&nbsp; Shape: custom &nbsp;|&nbsp; Tolerance: 10%</div>
     </div>
 
     <!-- SCORE -->
     <div class="score-card">
-        <div class="score-circle">35</div>
+        <div class="score-circle">100</div>
         <div class="score-details">
-            <div class="score-grade">POOR</div>
+            <div class="score-grade">EXCELLENT</div>
             <div class="score-note">Score based on dimensions, feature presence, feature parameters (radius/depth/count), structure, and volume/SA (when computable).</div>
         </div>
     </div>
@@ -91,30 +91,30 @@
             
             <tr>
                 <td>Width</td>
-                <td>70</td>
-                <td>35.0</td>
-                <td><span class="status-fail">❌ FAIL</span></td>
+                <td>11.55</td>
+                <td>10.0</td>
+                <td><span class="status-pass">✅ PASS</span></td>
             </tr>
             <tr>
                 <td>Height</td>
-                <td>200</td>
-                <td>400.0</td>
-                <td><span class="status-fail">❌ FAIL</span></td>
+                <td>4.8</td>
+                <td>5.34</td>
+                <td><span class="status-pass">✅ PASS</span></td>
             </tr>
             <tr>
                 <td>Depth</td>
-                <td>70</td>
-                <td>400.0</td>
-                <td><span class="status-fail">❌ FAIL</span></td>
+                <td>11.55</td>
+                <td>11.54</td>
+                <td><span class="status-pass">✅ PASS</span></td>
             </tr>
             <tr>
                 <td>Feature: Extrude</td>
                 <td>Yes</td>
-                <td>No</td>
-                <td><span class="status-fail">❌ FAIL</span></td>
+                <td>Yes</td>
+                <td><span class="status-pass">✅ PASS</span></td>
             </tr>
             <tr>
-                <td>Feature: Shell</td>
+                <td>Feature: Thread</td>
                 <td>Yes</td>
                 <td>Yes</td>
                 <td><span class="status-pass">✅ PASS</span></td>
@@ -133,13 +133,13 @@
             
                 <tr>
                     <td>Dimensions</td>
-                    <td>0/100</td>
-                    <td><div class="bar-bg"><div class="bar-fill" style="width:0%; background:#ef4444"></div></div></td>
+                    <td>100/100</td>
+                    <td><div class="bar-bg"><div class="bar-fill" style="width:100%; background:#22c55e"></div></div></td>
                 </tr>
                 <tr>
                     <td>Features</td>
-                    <td>50/100</td>
-                    <td><div class="bar-bg"><div class="bar-fill" style="width:50%; background:#f59e0b"></div></div></td>
+                    <td>100/100</td>
+                    <td><div class="bar-bg"><div class="bar-fill" style="width:100%; background:#22c55e"></div></div></td>
                 </tr>
                 <tr>
                     <td>Structure</td>
@@ -159,40 +159,45 @@
                 
         <table class="data-table">
             <tr><th>Axis</th><th>Min (mm)</th><th>Max (mm)</th><th>Size (mm)</th></tr>
-            <tr><td>X (Width)</td><td>0.0</td><td>35.0</td><td><strong>35.00</strong></td></tr>
-            <tr><td>Y (Height)</td><td>-200.0</td><td>200.0</td><td><strong>400.00</strong></td></tr>
-            <tr><td>Z (Depth)</td><td>-200.0</td><td>200.0</td><td><strong>400.00</strong></td></tr>
+            <tr><td>X (Width)</td><td>-5.0</td><td>5.0</td><td><strong>10.00</strong></td></tr>
+            <tr><td>Y (Height)</td><td>-0.34</td><td>5.0</td><td><strong>5.34</strong></td></tr>
+            <tr><td>Z (Depth)</td><td>-5.77</td><td>5.77</td><td><strong>11.54</strong></td></tr>
         </table>
             </div>
             <div>
                 <h3>Volume & Surface Area</h3>
-                <table class="data-table"><tr><th>Metric</th><th>Measured Value</th><th>Scoring</th></tr><tr><td>Volume</td><td><strong>3,405,277.00 mm³</strong></td><td class="muted">Not scored (complex shape)</td></tr><tr><td>Surface Area</td><td><strong>277,447.51 mm²</strong></td><td class="muted">Not scored (complex shape)</td></tr></table>
+                <table class="data-table"><tr><th>Metric</th><th>Measured Value</th><th>Scoring</th></tr><tr><td>Volume</td><td><strong>315.69 mm³</strong></td><td class="muted">Not scored (complex shape)</td></tr><tr><td>Surface Area</td><td><strong>438.90 mm²</strong></td><td class="muted">Not scored (complex shape)</td></tr></table>
             </div>
         </div>
 
         <h3>Body Summary</h3>
         <table class="data-table">
             <tr><th>Bodies</th><th>Faces</th><th>Edges</th></tr>
-            <tr><td><strong>1</strong></td><td><strong>5</strong></td><td><strong>4</strong></td></tr>
+            <tr><td><strong>1</strong></td><td><strong>13</strong></td><td><strong>31</strong></td></tr>
         </table>
     </div>
 
     <!-- FEATURE TREE -->
     <div class="section">
-        <h2>🌳 Feature Tree (2 features)</h2>
-        <div class="feature-tags"><span class="badge">Revolve ×1</span> <span class="badge">Shell ×1</span> </div>
+        <h2>🌳 Feature Tree (3 features)</h2>
+        <div class="feature-tags"><span class="badge">Boss-Extrude ×1</span> <span class="badge">Cut-Extrude ×1</span> <span class="badge">Thread ×1</span> </div>
         <table class="data-table">
             <tr><th>#</th><th>Feature Name</th><th>Type</th></tr>
             
             <tr>
                 <td>1</td>
-                <td><code>Revolve1</code></td>
-                <td><span class="badge">Revolve</span></td>
+                <td><code>Boss-Extrude1</code></td>
+                <td><span class="badge">Boss-Extrude</span></td>
             </tr>
             <tr>
                 <td>2</td>
-                <td><code>Shell1</code></td>
-                <td><span class="badge">Shell</span></td>
+                <td><code>Cut-Extrude1</code></td>
+                <td><span class="badge">Cut-Extrude</span></td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td><code>Thread1</code></td>
+                <td><span class="badge">Thread</span></td>
             </tr>
         </table>
     </div>
@@ -200,8 +205,8 @@
     <!-- INFO & VERIFICATION -->
     <div class="section">
         <h2>🔍 Verification Details</h2>
-        <h3>📊 Measured Properties</h3><table class="data-table"><tr><th>Property</th><th>Value</th><th>Note</th></tr><tr><td>Face Count</td><td><strong>5</strong></td><td class="muted">5 faces detected</td></tr><tr><td>Volume</td><td><strong>3,405,277.0 mm³</strong></td><td class="muted">Not scored (complex shape — no formula to verify against)</td></tr><tr><td>Surface Area</td><td><strong>277,447.5 mm²</strong></td><td class="muted">Not scored (complex shape — no formula to verify against)</td></tr></table><h3>🔍 Parameters (visual verification needed)</h3><ul class="check-list"><li class="check-item spec-item">Param: Extrude depth: 200.0mm — Parameter not readable from SolidWorks API — verify visually</li><li class="check-item spec-item">Param: Shell thickness: 2.0mm — Parameter not readable from SolidWorks API — verify visually</li></ul><h3>📋 Specific Measurements (from prompt)</h3><ul class="check-list"><li class="check-item spec-item">Body diameter: 70mm</li><li class="check-item spec-item">Neck diameter: 26mm</li><li class="check-item spec-item">Height: 200mm</li><li class="check-item spec-item">Wall thickness: 2mm</li></ul><h3>👁️ Design Verification Checklist</h3><p class="muted">Verify these visually in SolidWorks:</p><ul class="check-list"><li class="check-item design-item">Cylindrical body with uniform 2mm wall thickness</li><li class="check-item design-item">Narrower neck of 26mm diameter at top</li><li class="check-item design-item">Smooth transition between body and neck</li><li class="check-item design-item">Overall height of 200mm</li><li class="check-item design-item">No gaps or leaks in the shell</li></ul>
-        <h3>❌ Deviations Found</h3><ul class="deviation-list"><li>Width: 35.0mm (expected 70mm, off by 50.0%)</li><li>Height: 400.0mm (expected 200mm, off by 100.0%)</li><li>Depth: 400.0mm (expected 70mm, off by 471.4%)</li><li>Feature 'Extrude': MISSING</li></ul>
+        <h3>📊 Measured Properties</h3><table class="data-table"><tr><th>Property</th><th>Value</th><th>Note</th></tr><tr><td>Face Count</td><td><strong>13</strong></td><td class="muted">13 faces detected</td></tr><tr><td>Volume</td><td><strong>315.7 mm³</strong></td><td class="muted">Not scored (complex shape — no formula to verify against)</td></tr><tr><td>Surface Area</td><td><strong>438.9 mm²</strong></td><td class="muted">Not scored (complex shape — no formula to verify against)</td></tr></table><h3>🔍 Parameters (visual verification needed)</h3><ul class="check-list"><li class="check-item spec-item">Param: Extrude depth: 4.8mm — Parameter not readable from SolidWorks API — verify visually</li><li class="check-item spec-item">Param: Thread diameter: 6.0mm — Parameter not readable from SolidWorks API — verify visually</li><li class="check-item spec-item">Param: Thread pitch: 1.0mm — Parameter not readable from SolidWorks API — verify visually</li></ul><h3>📋 Specific Measurements (from prompt)</h3><ul class="check-list"><li class="check-item spec-item">Across flats: 10mm</li><li class="check-item spec-item">Across corners: 11.55mm</li><li class="check-item spec-item">Height (thickness): 4.8mm</li><li class="check-item spec-item">Thread diameter: 6mm</li><li class="check-item spec-item">Thread pitch: 1.0mm</li></ul><h3>👁️ Design Verification Checklist</h3><p class="muted">Verify these visually in SolidWorks:</p><ul class="check-list"><li class="check-item design-item">Hexagonal outer shape with 6 equal sides</li><li class="check-item design-item">Across flats dimension ~10mm</li><li class="check-item design-item">Across corners dimension ~11.55mm</li><li class="check-item design-item">Internal M6 thread present</li><li class="check-item design-item">Thread pitch 1.0mm</li><li class="check-item design-item">Uniform thickness of 4.8mm</li></ul>
+        
     </div>
 
     <!-- EXPECTED SPEC -->
@@ -210,15 +215,15 @@
         
         <table class="data-table">
             <tr><th>Field</th><th>Value</th></tr>
-            <tr><td>Description</td><td>Water bottle with cylindrical body and narrower neck</td></tr>
+            <tr><td>Description</td><td>Standard M6 hex nut with internal thread</td></tr>
             <tr><td>Expected Shape</td><td><span class="badge">custom</span></td></tr>
-            <tr><td>Expected Dimensions</td><td>70 W × 200 H × 70 D mm</td></tr>
-            <tr><td>Expected Features</td><td>Extrude, Shell</td></tr>
+            <tr><td>Expected Dimensions</td><td>11.55 W × 4.8 H × 11.55 D mm</td></tr>
+            <tr><td>Expected Features</td><td>Extrude, Thread</td></tr>
             <tr><td>Expected Bodies</td><td>1</td></tr>
             <tr><td>Tolerance</td><td>10%</td></tr>
         </table>
-        <h3>🎯 Expected Feature Parameters</h3><table class="data-table"><tr><th>Feature</th><th>Parameter</th><th>Expected</th></tr><tr><td>Extrude</td><td>depth</td><td><strong>200.0mm</strong></td></tr><tr><td>Shell</td><td>thickness</td><td><strong>2.0mm</strong></td></tr></table>
-        <p class="muted" style="margin-top:12px"><strong>Notes:</strong> Simple bottle geometry; bounding box based on maximum body diameter.</p>
+        <h3>🎯 Expected Feature Parameters</h3><table class="data-table"><tr><th>Feature</th><th>Parameter</th><th>Expected</th></tr><tr><td>Extrude</td><td>depth</td><td><strong>4.8mm</strong></td></tr><tr><td>Thread</td><td>diameter</td><td><strong>6.0mm</strong></td></tr><tr><td>Thread</td><td>pitch</td><td><strong>1.0mm</strong></td></tr></table>
+        <p class="muted" style="margin-top:12px"><strong>Notes:</strong> Standard M6 hex nut dimensions applied per engineering defaults.</p>
     </div>
 
 </div>

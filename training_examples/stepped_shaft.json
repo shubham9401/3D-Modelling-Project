@@ -1,0 +1,17 @@
+[
+    {"tool": "create_part", "args": {}},
+    {"tool": "create_sketch", "args": {"plane": "Top"}},
+    {"tool": "draw_circle", "args": {"radius": 15}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 40}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 40, "z": 0}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_circle", "args": {"radius": 10}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 60}},
+    {"tool": "select_face_at_coordinate", "args": {"x": 0, "y": 100, "z": 0}},
+    {"tool": "create_sketch_on_selected_face", "args": {}},
+    {"tool": "draw_circle", "args": {"radius": 7.5}},
+    {"tool": "validate_closed_profile", "args": {}},
+    {"tool": "extrude", "args": {"depth": 30}}
+]
